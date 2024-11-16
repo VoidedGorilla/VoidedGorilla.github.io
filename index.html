@@ -172,22 +172,52 @@
           return board.includes(null) ? null : 'Draw';
         }
 
-        function computerMove() {
-          const availableMoves = board.map((value, index) => (value === null ? index : null)).filter(v => v !== null);
-          if (availableMoves.length > 0) {
-            const randomIndex = availableMoves[Math.floor(Math.random() * availableMoves.length)];
-            board[randomIndex] = 'O';
-            const cell = document.querySelector(`.cell[data-index="${randomIndex}"]`);
-            cell.textContent = 'O';
-            cell.classList.add('taken');
+        // Function to get all available moves
+        function availableMoves() {
+          return board.map((value, index) => (value === null ? index : null)).filter(v => v !== null);
+        }
+
+        // AI logic to make a move
+        function aiMove() {
+          // Check for a winning move for AI
+          for (let i = 0; i < 9; i++) {
+            if (board[i] === null) {
+              board[i] = 'O';
+              if (checkWinner() === 'O') {
+                document.querySelector(`.cell[data-index="${i}"]`).textContent = 'O';
+                document.querySelector(`.cell[data-index="${i}"]`).classList.add('taken');
+                return;
+              }
+              board[i] = null;
+            }
           }
+
+          // Block player's winning move
+          for (let i = 0; i < 9; i++) {
+            if (board[i] === null) {
+              board[i] = 'X';
+              if (checkWinner() === 'X') {
+                board[i] = 'O';
+                document.querySelector(`.cell[data-index="${i}"]`).textContent = 'O';
+                document.querySelector(`.cell[data-index="${i}"]`).classList.add('taken');
+                return;
+              }
+              board[i] = null;
+            }
+          }
+
+          // Make a random move if no winning or blocking moves
+          const move = availableMoves()[Math.floor(Math.random() * availableMoves().length)];
+          board[move] = 'O';
+          document.querySelector(`.cell[data-index="${move}"]`).textContent = 'O';
+          document.querySelector(`.cell[data-index="${move}"]`).classList.add('taken');
         }
 
         function handleClick(e) {
           const cell = e.target;
           const index = cell.getAttribute('data-index');
 
-          if (!cell.classList.contains('cell') || cell.classList.contains('taken') || !board.includes(null) || gameEnded) {
+          if (!cell.classList.contains('cell') || cell.classList.contains('taken') || gameEnded) {
             return;
           }
 
@@ -203,11 +233,12 @@
             return;
           }
 
-          computerMove();
-          const computerWinner = checkWinner();
-          if (computerWinner) {
+          aiMove();
+
+          const aiWinner = checkWinner();
+          if (aiWinner) {
             gameEnded = true;
-            status.textContent = computerWinner === 'Draw' ? 'It\'s a draw!' : `${computerWinner} wins!`;
+            status.textContent = aiWinner === 'Draw' ? 'It\'s a draw!' : `${aiWinner} wins!`;
             document.querySelectorAll('.cell').forEach(c => c.style.pointerEvents = 'none'); // Disable further clicks
           }
         }
@@ -232,9 +263,6 @@
         });
 
         grid.addEventListener('click', handleClick);
-
-        // Initialize the game
-        resetGame();
       });
     </script>
   </body>
