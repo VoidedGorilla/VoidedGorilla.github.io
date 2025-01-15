@@ -59,16 +59,16 @@
   
   <div>
     <label for="red">Red (0-255):</label>
-    <input type="number" id="red" min="0" max="255" placeholder="0-255"><br>
+    <input type="number" id="red" min="0" max="255" placeholder="0-255" onchange="updateColorFromInput()"><br>
     
     <label for="green">Green (0-255):</label>
-    <input type="number" id="green" min="0" max="255" placeholder="0-255"><br>
+    <input type="number" id="green" min="0" max="255" placeholder="0-255" onchange="updateColorFromInput()"><br>
     
     <label for="blue">Blue (0-255):</label>
-    <input type="number" id="blue" min="0" max="255" placeholder="0-255"><br>
+    <input type="number" id="blue" min="0" max="255" placeholder="0-255" onchange="updateColorFromInput()"><br>
     
     <label for="hex">Hex Code:</label>
-    <input type="text" id="hex" placeholder="#RRGGBB"><br>
+    <input type="text" id="hex" placeholder="#RRGGBB" onchange="updateColorFromHex()"><br>
     
     <button onclick="findClosestColor()">Find Closest Color</button>
   </div>
@@ -78,7 +78,7 @@
   <div class="texture-comparison">
     <div>
       <div class="texture-box">
-        <div class="fur-overlay" id="desiredOverlay"></div>
+        <div class="fur-overlay" id="desiredOverlay" onclick="updateColorFromTexture(event)"></div>
       </div>
       <div class="label">Desired Color</div>
     </div>
@@ -109,6 +109,11 @@
     function rgbTo9Scale(value) {
       // Converts 0-255 to 0-9 scale
       return Math.round(value / 255 * 9);
+    }
+
+    function rgbToHex(r, g, b) {
+      // Converts RGB values to Hex code
+      return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
     }
 
     function hexToRgb(hex) {
@@ -172,6 +177,19 @@
       const closestG = Math.round(g9 * 255 / 9);
       const closestB = Math.round(b9 * 255 / 9);
       closestOverlay.style.backgroundColor = `rgb(${closestR}, ${closestG}, ${closestB})`;
+
+      // Update the sliders
+      document.getElementById("redSlider").value = r9;
+      document.getElementById("greenSlider").value = g9;
+      document.getElementById("blueSlider").value = b9;
+
+      // Update the slider values text
+      document.getElementById("redValue").innerText = r9;
+      document.getElementById("greenValue").innerText = g9;
+      document.getElementById("blueValue").innerText = b9;
+
+      // Update the hex code
+      document.getElementById("hex").value = rgbToHex(closestR, closestG, closestB);
     }
 
     function updateColorFromSlider() {
@@ -193,6 +211,24 @@
       // Trigger the color match calculation
       findClosestColor();
     }
-  </script>
-</body>
-</html>
+
+    function updateColorFromInput() {
+      // Trigger the color match calculation from input fields
+      findClosestColor();
+    }
+
+    function updateColorFromHex() {
+      // Trigger the color match calculation from hex field
+      findClosestColor();
+    }
+
+    function updateColorFromTexture(event) {
+      // Get the position of the click in the texture box
+      let textureBox = event.target;
+      let rect = textureBox.getBoundingClientRect();
+      let x = event.clientX - rect.left;
+      let y = event.clientY - rect.top;
+
+      // Get the color of the clicked pixel
+      let ctx = textureBox.getContext('2d');
+      let imageData = ctx.getImage
