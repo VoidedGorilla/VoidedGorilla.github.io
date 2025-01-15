@@ -24,13 +24,18 @@
       margin-top: 20px;
       font-size: 18px;
     }
-    .fur-preview {
+    .texture-comparison {
+      display: flex;
+      justify-content: center;
       margin-top: 20px;
+    }
+    .texture-box {
       width: 200px;
       height: 200px;
       background-image: url('gorilla-fur-texture.png'); /* Replace with your texture file */
       background-size: cover;
       border: 1px solid #ccc;
+      margin: 0 20px;
       position: relative;
     }
     .fur-overlay {
@@ -38,6 +43,10 @@
       height: 100%;
       background-color: rgba(0, 0, 0, 0); /* Placeholder color */
       mix-blend-mode: multiply; /* Blends the color with the texture */
+    }
+    .label {
+      margin-top: 10px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -63,8 +72,19 @@
   
   <div class="result" id="result"></div>
 
-  <div class="fur-preview">
-    <div class="fur-overlay" id="furOverlay"></div>
+  <div class="texture-comparison">
+    <div>
+      <div class="texture-box">
+        <div class="fur-overlay" id="desiredOverlay"></div>
+      </div>
+      <div class="label">Desired Color</div>
+    </div>
+    <div>
+      <div class="texture-box">
+        <div class="fur-overlay" id="closestOverlay"></div>
+      </div>
+      <div class="label">Closest Gorilla Color</div>
+    </div>
   </div>
   
   <script>
@@ -122,9 +142,18 @@
       document.getElementById("result").innerHTML = 
         `Closest Gorilla Tag Color: <br> R=${r9}, G=${g9}, B=${b9}`;
 
-      // Update the fur overlay color
-      const furOverlay = document.getElementById("furOverlay");
-      furOverlay.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
+      // Update the overlays
+      const desiredOverlay = document.getElementById("desiredOverlay");
+      const closestOverlay = document.getElementById("closestOverlay");
+
+      // Set the desired color
+      desiredOverlay.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
+
+      // Set the closest Gorilla Tag color
+      const closestR = Math.round(r9 * 255 / 9);
+      const closestG = Math.round(g9 * 255 / 9);
+      const closestB = Math.round(b9 * 255 / 9);
+      closestOverlay.style.backgroundColor = `rgb(${closestR}, ${closestG}, ${closestB})`;
     }
   </script>
 </body>
