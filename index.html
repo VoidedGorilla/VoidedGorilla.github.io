@@ -10,10 +10,13 @@
       text-align: center;
       margin: 20px;
     }
-    input {
+    input, .slider {
       margin: 10px;
       padding: 5px;
       font-size: 16px;
+    }
+    .slider {
+      width: 200px;
     }
     button {
       padding: 10px 20px;
@@ -69,7 +72,7 @@
     
     <button onclick="findClosestColor()">Find Closest Color</button>
   </div>
-  
+
   <div class="result" id="result"></div>
 
   <div class="texture-comparison">
@@ -85,6 +88,21 @@
       </div>
       <div class="label">Closest Gorilla Color</div>
     </div>
+  </div>
+
+  <div>
+    <h3>Adjust Color with Sliders</h3>
+    <label for="redSlider">Red (0-9):</label>
+    <input type="range" id="redSlider" class="slider" min="0" max="9" step="1" value="0" oninput="updateColorFromSlider()">
+    <span id="redValue">0</span><br>
+
+    <label for="greenSlider">Green (0-9):</label>
+    <input type="range" id="greenSlider" class="slider" min="0" max="9" step="1" value="0" oninput="updateColorFromSlider()">
+    <span id="greenValue">0</span><br>
+
+    <label for="blueSlider">Blue (0-9):</label>
+    <input type="range" id="blueSlider" class="slider" min="0" max="9" step="1" value="0" oninput="updateColorFromSlider()">
+    <span id="blueValue">0</span><br>
   </div>
   
   <script>
@@ -154,6 +172,26 @@
       const closestG = Math.round(g9 * 255 / 9);
       const closestB = Math.round(b9 * 255 / 9);
       closestOverlay.style.backgroundColor = `rgb(${closestR}, ${closestG}, ${closestB})`;
+    }
+
+    function updateColorFromSlider() {
+      // Get slider values
+      let redSlider = document.getElementById("redSlider").value;
+      let greenSlider = document.getElementById("greenSlider").value;
+      let blueSlider = document.getElementById("blueSlider").value;
+
+      // Update the displayed values next to sliders
+      document.getElementById("redValue").innerText = redSlider;
+      document.getElementById("greenValue").innerText = greenSlider;
+      document.getElementById("blueValue").innerText = blueSlider;
+
+      // Update the color in the inputs
+      document.getElementById("red").value = redSlider * 28;  // 0-9 scale to 0-255 range
+      document.getElementById("green").value = greenSlider * 28;
+      document.getElementById("blue").value = blueSlider * 28;
+
+      // Trigger the color match calculation
+      findClosestColor();
     }
   </script>
 </body>
