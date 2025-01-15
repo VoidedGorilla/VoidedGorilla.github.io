@@ -231,4 +231,31 @@
 
       // Get the color of the clicked pixel
       let ctx = textureBox.getContext('2d');
-      let imageData = ctx.getImage
+      let imageData = ctx.getImageData(x, y, 1, 1);
+      let pixel = imageData.data;
+
+      // Extract the RGB values of the clicked pixel
+      let r = pixel[0];
+      let g = pixel[1];
+      let b = pixel[2];
+
+      // Update the color inputs and sliders based on the clicked pixel color
+      document.getElementById("red").value = r;
+      document.getElementById("green").value = g;
+      document.getElementById("blue").value = b;
+
+      // Update the sliders to reflect the color
+      document.getElementById("redSlider").value = rgbTo9Scale(r);
+      document.getElementById("greenSlider").value = rgbTo9Scale(g);
+      document.getElementById("blueSlider").value = rgbTo9Scale(b);
+
+      // Update the color code
+      document.getElementById("hex").value = rgbToHex(r, g, b);
+
+      // Trigger the color match calculation
+      findClosestColor();
+    }
+  </script>
+</body>
+</html>
+
