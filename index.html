@@ -1,269 +1,108 @@
-<!doctype html>
-<html>
-  <head>
-    <title>this exists - VOIDED</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin: 0;
-        padding: 0;
-        background-color: #f7f7f7;
-      }
-      h1 {
-        margin-top: 20px;
-        color: #333;
-      }
-      p {
-        color: #666;
-      }
-      .game-container {
-        display: none;
-        margin-top: 20px;
-        text-align: center;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background-color: #fff;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        max-width: 400px;
-        margin: 20px auto;
-      }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(3, 100px);
-        grid-gap: 5px;
-        justify-content: center;
-        margin: 0 auto;
-      }
-      .cell {
-        width: 100px;
-        height: 100px;
-        border: 2px solid #444;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 36px;
-        font-weight: bold;
-        color: #333;
-        cursor: pointer;
-        background-color: #f0f0f0;
-        transition: background-color 0.3s;
-      }
-      .cell:hover {
-        background-color: #e0e0e0;
-      }
-      .cell.taken {
-        cursor: not-allowed;
-        background-color: #ddd;
-      }
-      #status {
-        margin-top: 15px;
-        font-size: 18px;
-        color: #444;
-      }
-      .button-container {
-        margin-top: 20px;
-      }
-      .start-button, .close-button, .restart-button {
-        margin-top: 15px;
-        padding: 8px 15px;
-        border: none;
-        border-radius: 4px;
-        font-size: 16px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-      }
-      .start-button {
-        background-color: #4caf50;
-        color: white;
-      }
-      .start-button:hover {
-        background-color: #45a049;
-      }
-      .close-button {
-        background-color: #f44336;
-        color: white;
-      }
-      .close-button:hover {
-        background-color: #d32f2f;
-      }
-      .restart-button {
-        background-color: #ff9800;
-        color: white;
-      }
-      .restart-button:hover {
-        background-color: #e68900;
-      }
-      .hidden {
-        display: none;
-      }
-    </style>
-  </head>
-  <body>
-    <p>This is an example paragraph. Anything in theTEST <strong>body</strong> tag will appear on the page, just like this <strong>p</strong> tag and its contents.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gorilla Tag Color Matcher</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    input {
+      margin: 10px;
+      padding: 5px;
+      font-size: 16px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gorilla Tag Color Matcher</h1>
+  <p>Enter RGB (0-255) values or a Hexadecimal code:</p>
+  
+  <div>
+    <label for="red">Red (0-255):</label>
+    <input type="number" id="red" min="0" max="255" placeholder="0-255"><br>
+    
+    <label for="green">Green (0-255):</label>
+    <input type="number" id="green" min="0" max="255" placeholder="0-255"><br>
+    
+    <label for="blue">Blue (0-255):</label>
+    <input type="number" id="blue" min="0" max="255" placeholder="0-255"><br>
+    
+    <label for="hex">Hex Code:</label>
+    <input type="text" id="hex" placeholder="#RRGGBB"><br>
+    
+    <button onclick="findClosestColor()">Find Closest Color</button>
+  </div>
+  
+  <div class="result" id="result"></div>
+  
+  <script>
+    function rgbTo9Scale(value) {
+      // Converts 0-255 to 0-9 scale
+      return Math.round(value / 255 * 9);
+    }
 
-    <h1>Tic Tac Toe</h1>
+    function hexToRgb(hex) {
+      // Converts a hex code to RGB values
+      hex = hex.replace("#", "");
+      if (hex.length !== 6) return null;
+      let r = parseInt(hex.substring(0, 2), 16);
+      let g = parseInt(hex.substring(2, 4), 16);
+      let b = parseInt(hex.substring(4, 6), 16);
+      return { r, g, b };
+    }
 
-    <div class="button-container">
-      <button class="start-button" id="startButton">Start Game</button>
-      <button class="restart-button hidden" id="restartButton">Restart Game</button>
-      <button class="close-button hidden" id="closeButton">Close Game</button>
-    </div>
+    function findClosestColor() {
+      let r = document.getElementById("red").value;
+      let g = document.getElementById("green").value;
+      let b = document.getElementById("blue").value;
+      let hex = document.getElementById("hex").value;
 
-    <div class="game-container" id="gameContainer">
-      <div class="grid" id="grid">
-        <div class="cell" data-index="0"></div>
-        <div class="cell" data-index="1"></div>
-        <div class="cell" data-index="2"></div>
-        <div class="cell" data-index="3"></div>
-        <div class="cell" data-index="4"></div>
-        <div class="cell" data-index="5"></div>
-        <div class="cell" data-index="6"></div>
-        <div class="cell" data-index="7"></div>
-        <div class="cell" data-index="8"></div>
-      </div>
-      <p id="status"></p>
-    </div>
+      let red, green, blue;
 
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        const gameContainer = document.getElementById('gameContainer');
-        const startButton = document.getElementById('startButton');
-        const restartButton = document.getElementById('restartButton');
-        const closeButton = document.getElementById('closeButton');
-        const grid = document.getElementById('grid');
-        const status = document.getElementById('status');
-        let currentPlayer = 'X';
-        let board = Array(9).fill(null);
-        let gameEnded = false;
-
-        function resetGame() {
-          board = Array(9).fill(null);
-          currentPlayer = 'X';
-          gameEnded = false;
-          status.textContent = '';
-          document.querySelectorAll('.cell').forEach(cell => {
-            cell.textContent = '';
-            cell.classList.remove('taken');
-            cell.style.pointerEvents = 'auto'; // Enable clicks again
-          });
+      if (hex) {
+        let rgb = hexToRgb(hex);
+        if (!rgb) {
+          document.getElementById("result").innerHTML = "Invalid Hex Code!";
+          return;
         }
+        red = rgb.r;
+        green = rgb.g;
+        blue = rgb.b;
+      } else if (r && g && b) {
+        red = parseInt(r);
+        green = parseInt(g);
+        blue = parseInt(b);
 
-        function checkWinner() {
-          const winningCombinations = [
-            [0, 1, 2],
-            [3, 4, 5],
-            [6, 7, 8],
-            [0, 3, 6],
-            [1, 4, 7],
-            [2, 5, 8],
-            [0, 4, 8],
-            [2, 4, 6]
-          ];
-
-          for (let combination of winningCombinations) {
-            const [a, b, c] = combination;
-            if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-              return board[a];
-            }
-          }
-          return board.includes(null) ? null : 'Draw';
+        if (red < 0 || red > 255 || green < 0 || green > 255 || blue < 0 || blue > 255) {
+          document.getElementById("result").innerHTML = "RGB values must be between 0 and 255.";
+          return;
         }
+      } else {
+        document.getElementById("result").innerHTML = "Please enter either RGB or Hex values.";
+        return;
+      }
 
-        // Function to get all available moves
-        function availableMoves() {
-          return board.map((value, index) => (value === null ? index : null)).filter(v => v !== null);
-        }
+      // Convert to Gorilla Tag's 0-9 scale
+      let r9 = rgbTo9Scale(red);
+      let g9 = rgbTo9Scale(green);
+      let b9 = rgbTo9Scale(blue);
 
-        // AI logic to make a move
-        function aiMove() {
-          // Check for a winning move for AI
-          for (let i = 0; i < 9; i++) {
-            if (board[i] === null) {
-              board[i] = 'O';
-              if (checkWinner() === 'O') {
-                document.querySelector(`.cell[data-index="${i}"]`).textContent = 'O';
-                document.querySelector(`.cell[data-index="${i}"]`).classList.add('taken');
-                return;
-              }
-              board[i] = null;
-            }
-          }
-
-          // Block player's winning move
-          for (let i = 0; i < 9; i++) {
-            if (board[i] === null) {
-              board[i] = 'X';
-              if (checkWinner() === 'X') {
-                board[i] = 'O';
-                document.querySelector(`.cell[data-index="${i}"]`).textContent = 'O';
-                document.querySelector(`.cell[data-index="${i}"]`).classList.add('taken');
-                return;
-              }
-              board[i] = null;
-            }
-          }
-
-          // Make a random move if no winning or blocking moves
-          const move = availableMoves()[Math.floor(Math.random() * availableMoves().length)];
-          board[move] = 'O';
-          document.querySelector(`.cell[data-index="${move}"]`).textContent = 'O';
-          document.querySelector(`.cell[data-index="${move}"]`).classList.add('taken');
-        }
-
-        function handleClick(e) {
-          const cell = e.target;
-          const index = cell.getAttribute('data-index');
-
-          if (!cell.classList.contains('cell') || cell.classList.contains('taken') || gameEnded) {
-            return;
-          }
-
-          board[index] = 'X';
-          cell.textContent = 'X';
-          cell.classList.add('taken');
-
-          const winner = checkWinner();
-          if (winner) {
-            gameEnded = true;
-            status.textContent = winner === 'Draw' ? 'It\'s a draw!' : `${winner} wins!`;
-            document.querySelectorAll('.cell').forEach(c => c.style.pointerEvents = 'none'); // Disable further clicks
-            return;
-          }
-
-          aiMove();
-
-          const aiWinner = checkWinner();
-          if (aiWinner) {
-            gameEnded = true;
-            status.textContent = aiWinner === 'Draw' ? 'It\'s a draw!' : `${aiWinner} wins!`;
-            document.querySelectorAll('.cell').forEach(c => c.style.pointerEvents = 'none'); // Disable further clicks
-          }
-        }
-
-        startButton.addEventListener('click', () => {
-          gameContainer.style.display = 'block';
-          startButton.classList.add('hidden');
-          restartButton.classList.remove('hidden');
-          closeButton.classList.remove('hidden');
-          resetGame();
-        });
-
-        restartButton.addEventListener('click', () => {
-          resetGame();
-        });
-
-        closeButton.addEventListener('click', () => {
-          gameContainer.style.display = 'none';
-          startButton.classList.remove('hidden');
-          restartButton.classList.add('hidden');
-          closeButton.classList.add('hidden');
-        });
-
-        grid.addEventListener('click', handleClick);
-      });
-    </script>
-  </body>
+      document.getElementById("result").innerHTML = 
+        `Closest Gorilla Tag Color: <br> R=${r9}, G=${g9}, B=${b9}`;
+    }
+  </script>
+</body>
 </html>
