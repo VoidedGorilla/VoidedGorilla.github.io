@@ -213,25 +213,24 @@
   function draw(ctx, r, g, b) {
     ctx.clearRect(0, 0, 200, 200);
     const activeImg = currentFurType === 'default' ? furImg : cyberImg;
-
-    if (currentFurType === 'default') {
-      // Bottom layer: Color
-      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      ctx.fillRect(0, 0, 200, 200);
-      // Top layer: Texture (Face hides color, transparent fur lets it through)
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.drawImage(activeImg, 0, 0, 200, 200);
-    } else {
-      // Cyber Fur: Black & White tint logic
-      ctx.drawImage(activeImg, 0, 0, 200, 200);
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      ctx.fillRect(0, 0, 200, 200);
-      ctx.globalCompositeOperation = 'destination-atop';
-      ctx.drawImage(activeImg, 0, 0, 200, 200);
-    }
+  
+    // 1. Draw the texture first
+    ctx.drawImage(activeImg, 0, 0, 200, 200);
+  
+    // 2. Use 'source-atop' to fill only the existing pixels with color
+    // This acts like a "clip" so the color only goes where the fur is
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.8)`; // 0.8 opacity keeps some detail
+    ctx.fillRect(0, 0, 200, 200);
+  
+    // 3. Use 'multiply' to bring back the shadows and fur details
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(activeImg, 0, 0, 200, 200);
+  
+    // 4. Reset to normal for the next frame
     ctx.globalCompositeOperation = 'source-over';
   }
+
 
   function sync() {
     let r9 = document.getElementById('rS').value;
