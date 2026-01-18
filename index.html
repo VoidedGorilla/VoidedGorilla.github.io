@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Closest Match: Gorilla Color Tool</title>
+  <title>Gorilla Tag Fur Color Picker</title>
   <style>
     @font-face {
       font-family: 'GTAG';
@@ -27,20 +27,16 @@
       border: 1px solid #333;
     }
 
-    .result-display {
-      font-family: 'GTAG', sans-serif;
-      font-size: 60px;
-      margin: 20px 0;
-      text-shadow: 3px 3px 0px #000;
-    }
-    .val-r { color: #ff3e3e; }
-    .val-g { color: #3eff3e; }
-    .val-b { color: #3e3eff; }
-
     .display-flex {
       display: flex;
       justify-content: space-around;
-      margin-bottom: 25px;
+      margin-bottom: 10px;
+    }
+
+    .canvas-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
     canvas {
@@ -51,7 +47,41 @@
       cursor: crosshair;
     }
 
-    /* Slider Styling - Fixing the "blending in" issue */
+    .canvas-label {
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #888;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .result-display {
+      font-family: 'GTAG', sans-serif;
+      font-size: 60px;
+      margin: 20px 0;
+      text-shadow: 3px 3px 0px #000;
+    }
+    .val-r { color: #ff3e3e; }
+    .val-g { color: #3eff3e; }
+    .val-b { color: #3e3eff; }
+
+    .hex-container {
+      margin-bottom: 10px;
+    }
+    #hexInput {
+      background: #121212;
+      border: 2px solid #444;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 16px;
+      text-align: center;
+      width: 120px;
+    }
+
+    /* General Slider Track */
     .slider { 
       -webkit-appearance: none;
       width: 80%; 
@@ -62,20 +92,27 @@
       margin: 20px 0;
     }
 
-    /* The Slider Button (Thumb) - Adding high contrast border */
+    /* Custom Thumb Styling - Specific Colors */
     .slider::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
       width: 24px;
       height: 24px;
       border-radius: 50%;
-      background: #eee;
-      border: 3px solid #000;
+      border: 2px solid #fff; /* High contrast border */
       cursor: pointer;
-      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+      box-shadow: 0 0 5px #000;
     }
 
-    /* Save Slots */
+    #rS::-webkit-slider-thumb { background: #801a1a; } /* Dark Red */
+    #gS::-webkit-slider-thumb { background: #1a801a; } /* Dark Green */
+    #bS::-webkit-slider-thumb { background: #1a1a80; } /* Dark Blue */
+
+    /* For Firefox Support */
+    #rS::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: #801a1a; }
+    #gS::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: #1a801a; }
+    #bS::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: #1a1a80; }
+
     .save-slots {
       display: flex;
       justify-content: center;
@@ -89,7 +126,6 @@
       border-radius: 10px;
       border: 2px solid #444;
       cursor: pointer;
-      transition: all 0.2s;
     }
     .slot.selected {
       border-color: #fff;
@@ -106,13 +142,14 @@
     }
 
     .btn {
-      padding: 10px 20px;
+      padding: 12px 24px;
       background: #444;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 8px;
       cursor: pointer;
       font-weight: bold;
+      margin-top: 15px;
     }
     .btn:hover { background: #555; }
 
@@ -126,17 +163,27 @@
 <body>
 
 <div class="container">
-  <h1>CLOSEST MATCH</h1>
+  <h1>Gorilla Tag Fur Color Picker</h1>
 
   <div class="display-flex">
-    <canvas id="desiredCanvas" width="200" height="200"></canvas>
-    <canvas id="closestCanvas" width="200" height="200"></canvas>
+    <div class="canvas-container">
+      <canvas id="desiredCanvas" width="200" height="200"></canvas>
+      <div class="canvas-label">Desired</div>
+    </div>
+    <div class="canvas-container">
+      <canvas id="closestCanvas" width="200" height="200"></canvas>
+      <div class="canvas-label">Closest Match</div>
+    </div>
   </div>
 
   <div class="result-display">
     <span class="val-r" id="rNum">0</span> 
     <span class="val-g" id="gNum">0</span> 
     <span class="val-b" id="bNum">0</span>
+  </div>
+
+  <div class="hex-container">
+    <input type="text" id="hexInput" placeholder="#FFFFFF" maxlength="7" oninput="updateFromHex()">
   </div>
 
   <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync()">
@@ -149,7 +196,6 @@
 
   <div style="margin-top: 40px;">
     <h3>SAVED COLORS</h3>
-    <p style="font-size:12px; color:#666;">Select a slot, then click Save to overwrite it.</p>
     <div class="save-slots">
       <div class="slot selected" onclick="selectSlot(0)" id="slot0"><div class="slot-preview"></div>Empty</div>
       <div class="slot" onclick="selectSlot(1)" id="slot1"><div class="slot-preview"></div>Empty</div>
@@ -157,7 +203,6 @@
       <div class="slot" onclick="selectSlot(3)" id="slot3"><div class="slot-preview"></div>Empty</div>
       <div class="slot" onclick="selectSlot(4)" id="slot4"><div class="slot-preview"></div>Empty</div>
     </div>
-    <br>
     <button class="btn" onclick="saveToSelected()">Save to Selected Slot</button>
   </div>
 </div>
@@ -188,6 +233,8 @@
 
     draw(dCtx, r, g, b);
     draw(cCtx, r, g, b);
+    
+    document.getElementById('hexInput').value = rgbToHex(r, g, b);
   }
 
   function draw(ctx, r, g, b) {
@@ -201,12 +248,29 @@
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  function updateFromHex() {
+    let hex = document.getElementById('hexInput').value.replace('#', '');
+    if (hex.length === 6) {
+      let r = parseInt(hex.substring(0, 2), 16);
+      let g = parseInt(hex.substring(2, 4), 16);
+      let b = parseInt(hex.substring(4, 6), 16);
+
+      document.getElementById('rS').value = Math.round(r / 255 * 9);
+      document.getElementById('gS').value = Math.round(g / 255 * 9);
+      document.getElementById('bS').value = Math.round(b / 255 * 9);
+      sync();
+    }
+  }
+
+  function rgbToHex(r, g, b) {
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+  }
+
   function selectSlot(i) {
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('selected'));
     document.getElementById(`slot${i}`).classList.add('selected');
     selectedSlotIndex = i;
     
-    // If slot is filled, load the color when clicking
     if(savedColors[i]) {
       document.getElementById('rS').value = savedColors[i].r;
       document.getElementById('gS').value = savedColors[i].g;
