@@ -5,15 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Closest Match: Gorilla Color Tool</title>
   <style>
-    /* Loading your custom GTAG Font */
     @font-face {
       font-family: 'GTAG';
       src: url('GTAG Font Remake B3.ttf');
     }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0f0f0f; /* Darkened for better contrast */
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #121212;
       color: white;
       text-align: center;
       padding: 20px;
@@ -22,120 +21,116 @@
     .container {
       max-width: 750px;
       margin: auto;
-      background: #252525; /* Lighter than body to stand out */
+      background: #1e1e1e;
       padding: 30px;
       border-radius: 20px;
-      border: 2px solid #3d3d3d;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+      border: 1px solid #333;
     }
 
-    /* Result Section with Custom Font */
     .result-display {
       font-family: 'GTAG', sans-serif;
-      font-size: 48px;
+      font-size: 60px;
       margin: 20px 0;
-      letter-spacing: 5px;
-      text-shadow: 2px 2px 0px #000;
+      text-shadow: 3px 3px 0px #000;
     }
-    .val-r { color: #ff4d4d; }
-    .val-g { color: #4dff4d; }
-    .val-b { color: #4d4dff; }
+    .val-r { color: #ff3e3e; }
+    .val-g { color: #3eff3e; }
+    .val-b { color: #3e3eff; }
 
     .display-flex {
       display: flex;
       justify-content: space-around;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
+      margin-bottom: 25px;
     }
 
     canvas {
-      border: 4px solid #111;
-      border-radius: 12px;
-      background-color: #000;
-      cursor: crosshair;
+      border: 3px solid #000;
+      border-radius: 10px;
       width: 180px;
       height: 180px;
+      cursor: crosshair;
     }
 
-    /* Sliders with high-contrast backgrounds */
-    .slider-row {
-      background: #1a1a1a;
-      margin: 10px auto;
-      padding: 10px;
-      border-radius: 10px;
-      width: 90%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    /* Slider Styling - Fixing the "blending in" issue */
     .slider { 
-      width: 250px; 
-      margin: 0 15px; 
-      height: 10px;
+      -webkit-appearance: none;
+      width: 80%; 
+      height: 8px;
+      background: #333;
+      outline: none;
       border-radius: 5px;
-      cursor: pointer;
+      margin: 20px 0;
     }
-    #rS { accent-color: #ff4d4d; }
-    #gS { accent-color: #4dff4d; }
-    #bS { accent-color: #4d4dff; }
 
-    /* Saved Colors Section */
-    .saved-section {
-      margin-top: 30px;
-      padding-top: 20px;
-      border-top: 1px solid #444;
+    /* The Slider Button (Thumb) - Adding high contrast border */
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #eee;
+      border: 3px solid #000;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
+
+    /* Save Slots */
     .save-slots {
       display: flex;
       justify-content: center;
-      gap: 10px;
-      margin-top: 15px;
+      gap: 12px;
+      margin-top: 20px;
     }
     .slot {
-      width: 100px;
-      background: #1a1a1a;
+      width: 110px;
+      background: #121212;
       padding: 10px;
-      border-radius: 8px;
-      border: 1px dashed #555;
+      border-radius: 10px;
+      border: 2px solid #444;
       cursor: pointer;
-      font-size: 12px;
+      transition: all 0.2s;
     }
-    .slot.filled { border-style: solid; border-color: #bb86fc; }
+    .slot.selected {
+      border-color: #fff;
+      background: #2a2a2a;
+      transform: scale(1.05);
+    }
     .slot-preview {
       width: 100%;
-      height: 40px;
-      border-radius: 4px;
-      margin-bottom: 5px;
-      background: #333;
+      height: 45px;
+      border-radius: 5px;
+      margin-bottom: 8px;
+      background: #222;
+      border: 1px solid #000;
     }
 
+    .btn {
+      padding: 10px 20px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn:hover { background: #555; }
+
     .disclaimer {
-      background: rgba(255, 193, 7, 0.1);
-      color: #ffc107;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-top: 15px;
-      border: 1px solid #ffc107;
-      display: none;
+      margin-top: 20px;
+      font-size: 14px;
+      color: #888;
     }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h2 style="margin-top:0; color: #aaa;">CLOSEST MATCH</h2>
+  <h1>CLOSEST MATCH</h1>
 
   <div class="display-flex">
-    <div>
-      <canvas id="desiredCanvas" width="200" height="200"></canvas>
-      <div style="font-size: 11px; color:#777; margin-top:5px;">DESIRED</div>
-    </div>
-    <div>
-      <canvas id="closestCanvas" width="200" height="200"></canvas>
-      <div style="font-size: 11px; color:#777; margin-top:5px;">MATCH</div>
-    </div>
+    <canvas id="desiredCanvas" width="200" height="200"></canvas>
+    <canvas id="closestCanvas" width="200" height="200"></canvas>
   </div>
 
   <div class="result-display">
@@ -144,54 +139,39 @@
     <span class="val-b" id="bNum">0</span>
   </div>
 
-  <div class="slider-row">
-    <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync()">
-  </div>
-  <div class="slider-row">
-    <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="sync()">
-  </div>
-  <div class="slider-row">
-    <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="sync()">
+  <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync()">
+  <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="sync()">
+  <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="sync()">
+
+  <div class="disclaimer">
+    *Note: 0 0 0 appears as a shiny black in-game due to material shaders.
   </div>
 
-  <div id="blackDisclaimer" class="disclaimer">
-    SHINY BLACK ALERT: In-game shaders make 0-0-0 appear reflective rather than pitch black.
-  </div>
-
-  <div class="saved-section">
-    <button onclick="saveColor()" style="padding: 8px 16px; border-radius: 5px; cursor: pointer;">Save Current Color</button>
-    <div class="save-slots" id="saveSlots">
-      <div class="slot" onclick="loadColor(0)" id="slot0"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="loadColor(1)" id="slot1"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="loadColor(2)" id="slot2"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="loadColor(3)" id="slot3"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="loadColor(4)" id="slot4"><div class="slot-preview"></div>Empty</div>
+  <div style="margin-top: 40px;">
+    <h3>SAVED COLORS</h3>
+    <p style="font-size:12px; color:#666;">Select a slot, then click Save to overwrite it.</p>
+    <div class="save-slots">
+      <div class="slot selected" onclick="selectSlot(0)" id="slot0"><div class="slot-preview"></div>Empty</div>
+      <div class="slot" onclick="selectSlot(1)" id="slot1"><div class="slot-preview"></div>Empty</div>
+      <div class="slot" onclick="selectSlot(2)" id="slot2"><div class="slot-preview"></div>Empty</div>
+      <div class="slot" onclick="selectSlot(3)" id="slot3"><div class="slot-preview"></div>Empty</div>
+      <div class="slot" onclick="selectSlot(4)" id="slot4"><div class="slot-preview"></div>Empty</div>
     </div>
+    <br>
+    <button class="btn" onclick="saveToSelected()">Save to Selected Slot</button>
   </div>
 </div>
 
 <script>
-  const dCanvas = document.getElementById('desiredCanvas');
-  const cCanvas = document.getElementById('closestCanvas');
-  const dCtx = dCanvas.getContext('2d', { willReadFrequently: true });
-  const cCtx = cCanvas.getContext('2d');
+  const dCtx = document.getElementById('desiredCanvas').getContext('2d');
+  const cCtx = document.getElementById('closestCanvas').getContext('2d');
   const furImg = new Image();
   furImg.src = 'gorilla-fur-texture.png';
 
+  let selectedSlotIndex = 0;
   let savedColors = [null, null, null, null, null];
 
   furImg.onload = () => sync();
-
-  function drawTintedFur(ctx, r, g, b) {
-    ctx.clearRect(0, 0, 200, 200);
-    ctx.drawImage(furImg, 0, 0, 200, 200);
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    ctx.fillRect(0, 0, 200, 200);
-    ctx.globalCompositeOperation = 'destination-atop';
-    ctx.drawImage(furImg, 0, 0, 200, 200);
-    ctx.globalCompositeOperation = 'source-over';
-  }
 
   function sync() {
     let r9 = document.getElementById('rS').value;
@@ -202,48 +182,31 @@
     document.getElementById('gNum').innerText = g9;
     document.getElementById('bNum').innerText = b9;
 
-    document.getElementById('blackDisclaimer').style.display = (r9==0 && g9==0 && b9==0) ? 'block' : 'none';
-
     let r = Math.round((r9 / 9) * 255);
     let g = Math.round((g9 / 9) * 255);
     let b = Math.round((b9 / 9) * 255);
 
-    drawTintedFur(dCtx, r, g, b);
-    drawTintedFur(cCtx, r, g, b);
+    draw(dCtx, r, g, b);
+    draw(cCtx, r, g, b);
   }
 
-  function saveColor() {
-    let r9 = document.getElementById('rS').value;
-    let g9 = document.getElementById('gS').value;
-    let b9 = document.getElementById('bS').value;
+  function draw(ctx, r, g, b) {
+    ctx.clearRect(0, 0, 200, 200);
+    ctx.drawImage(furImg, 0, 0, 200, 200);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+    ctx.fillRect(0, 0, 200, 200);
+    ctx.globalCompositeOperation = 'destination-atop';
+    ctx.drawImage(furImg, 0, 0, 200, 200);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  function selectSlot(i) {
+    document.querySelectorAll('.slot').forEach(s => s.classList.remove('selected'));
+    document.getElementById(`slot${i}`).classList.add('selected');
+    selectedSlotIndex = i;
     
-    // Find first empty slot or shift if full
-    let colorObj = { r: r9, g: g9, b: b9 };
-    for(let i=0; i<5; i++) {
-      if(!savedColors[i]) {
-        savedColors[i] = colorObj;
-        updateSaveUI();
-        return;
-      }
-    }
-    alert("Save slots full!");
-  }
-
-  function updateSaveUI() {
-    savedColors.forEach((color, i) => {
-      const slot = document.getElementById(`slot${i}`);
-      if(color) {
-        slot.classList.add('filled');
-        let r = Math.round((color.r/9)*255);
-        let g = Math.round((color.g/9)*255);
-        let b = Math.round((color.b/9)*255);
-        slot.querySelector('.slot-preview').style.backgroundColor = `rgb(${r},${g},${b})`;
-        slot.innerHTML = `<div class="slot-preview" style="background:rgb(${r},${g},${b})"></div>${color.r} ${color.g} ${color.b}`;
-      }
-    });
-  }
-
-  function loadColor(i) {
+    // If slot is filled, load the color when clicking
     if(savedColors[i]) {
       document.getElementById('rS').value = savedColors[i].r;
       document.getElementById('gS').value = savedColors[i].g;
@@ -252,17 +215,21 @@
     }
   }
 
-  // Texture click logic
-  dCanvas.addEventListener('click', (e) => {
-    const rect = dCanvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (200 / rect.width);
-    const y = (e.clientY - rect.top) * (200 / rect.height);
-    const p = dCtx.getImageData(x, y, 1, 1).data;
-    document.getElementById('rS').value = Math.round(p[0]/255*9);
-    document.getElementById('gS').value = Math.round(p[1]/255*9);
-    document.getElementById('bS').value = Math.round(p[2]/255*9);
-    sync();
-  });
+  function saveToSelected() {
+    let r9 = document.getElementById('rS').value;
+    let g9 = document.getElementById('gS').value;
+    let b9 = document.getElementById('bS').value;
+    
+    savedColors[selectedSlotIndex] = { r: r9, g: g9, b: b9 };
+    
+    let r = Math.round((r9/9)*255);
+    let g = Math.round((g9/9)*255);
+    let b = Math.round((b9/9)*255);
+    
+    const slot = document.getElementById(`slot${selectedSlotIndex}`);
+    slot.querySelector('.slot-preview').style.backgroundColor = `rgb(${r},${g},${b})`;
+    slot.innerHTML = `<div class="slot-preview" style="background:rgb(${r},${g},${b})"></div>${r9} ${g9} ${b9}`;
+  }
 </script>
 
 </body>
