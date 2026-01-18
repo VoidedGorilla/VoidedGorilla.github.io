@@ -3,259 +3,153 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gorilla Tag Color Matcher</title>
+  <title>Gorilla Tag Color Matcher Pro</title>
   <style>
+    :root {
+      --gt-bg: #1a1a1a;
+      --gt-green: #2ecc71;
+    }
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Courier New', Courier, monospace;
+      background-color: var(--gt-bg);
+      color: white;
       text-align: center;
-      margin: 20px;
+      padding: 20px;
     }
-    input, .slider {
-      margin: 10px;
-      padding: 5px;
-      font-size: 16px;
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #333;
+      padding: 20px;
+      border-radius: 15px;
+      border: 4px solid #555;
     }
-    .slider {
-      width: 200px;
+    input, .slider { margin: 10px; padding: 8px; }
+    .slider { width: 80%; accent-color: var(--gt-green); }
+    
+    .result-box {
+      background: #000;
+      padding: 15px;
+      border: 2px solid var(--gt-green);
+      margin: 20px 0;
+      font-size: 24px;
+      color: var(--gt-green);
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    .result {
-      margin-top: 20px;
-      font-size: 18px;
-    }
+
     .texture-comparison {
       display: flex;
-      justify-content: center;
+      justify-content: space-around;
       margin-top: 20px;
     }
     .texture-box {
-      width: 200px;
-      height: 200px;
-      background-image: url('gorilla-fur-texture.png'); /* Replace with your texture file */
-      background-size: cover;
-      border: 1px solid #ccc;
-      margin: 0 20px;
+      width: 150px;
+      height: 150px;
+      background-color: #555;
+      /* Using a placeholder gradient to simulate fur texture without external files */
+      background-image: repeating-conic-gradient(#808080 0% 25%, #707070 0% 50%) ;
+      background-size: 10px 10px;
+      border: 3px solid #000;
       position: relative;
     }
     .fur-overlay {
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0); /* Placeholder color */
-      mix-blend-mode: multiply; /* Blends the color with the texture */
+      mix-blend-mode: multiply;
+      transition: background-color 0.2s;
     }
-    .label {
-      margin-top: 10px;
-      font-weight: bold;
-    }
+    .label { margin-top: 10px; font-size: 14px; text-transform: uppercase; }
   </style>
 </head>
 <body>
-  <h1>Gorilla Tag Color Matcher</h1>
-  <p>Enter RGB (0-255) values or a Hexadecimal code:</p>
+
+<div class="container">
+  <h1>GORILLA COLOR MATCHER</h1>
   
-  <div>
-    <label for="red">Red (0-255):</label>
-    <input type="number" id="red" min="0" max="255" placeholder="0-255" onchange="updateColorFromInput()"><br>
-    
-    <label for="green">Green (0-255):</label>
-    <input type="number" id="green" min="0" max="255" placeholder="0-255" onchange="updateColorFromInput()"><br>
-    
-    <label for="blue">Blue (0-255):</label>
-    <input type="number" id="blue" min="0" max="255" placeholder="0-255" onchange="updateColorFromInput()"><br>
-    
-    <label for="hex">Hex Code:</label>
-    <input type="text" id="hex" placeholder="#RRGGBB" onchange="updateColorFromHex()"><br>
-    
-    <button onclick="findClosestColor()">Find Closest Color</button>
+  <div class="input-group">
+    <label>Hex:</label>
+    <input type="text" id="hex" placeholder="#FFFFFF" oninput="updateFromHex()">
   </div>
 
-  <div class="result" id="result"></div>
+  <div class="result-box" id="result">
+    R: 0 &nbsp; G: 0 &nbsp; B: 0
+  </div>
 
   <div class="texture-comparison">
     <div>
-      <div class="texture-box">
-        <div class="fur-overlay" id="desiredOverlay" onclick="updateColorFromTexture(event)"></div>
-      </div>
-      <div class="label">Desired Color</div>
+      <div class="texture-box"><div class="fur-overlay" id="desiredOverlay"></div></div>
+      <div class="label">Input Color</div>
     </div>
     <div>
-      <div class="texture-box">
-        <div class="fur-overlay" id="closestOverlay"></div>
-      </div>
-      <div class="label">Closest Gorilla Color</div>
+      <div class="texture-box"><div class="fur-overlay" id="closestOverlay"></div></div>
+      <div class="label">Gorilla Match</div>
     </div>
   </div>
 
-  <div>
-    <h3>Adjust Color with Sliders</h3>
-    <label for="redSlider">Red (0-9):</label>
-    <input type="range" id="redSlider" class="slider" min="0" max="9" step="1" value="0" oninput="updateColorFromSlider()">
-    <span id="redValue">0</span><br>
-
-    <label for="greenSlider">Green (0-9):</label>
-    <input type="range" id="greenSlider" class="slider" min="0" max="9" step="1" value="0" oninput="updateColorFromSlider()">
-    <span id="greenValue">0</span><br>
-
-    <label for="blueSlider">Blue (0-9):</label>
-    <input type="range" id="blueSlider" class="slider" min="0" max="9" step="1" value="0" oninput="updateColorFromSlider()">
-    <span id="blueValue">0</span><br>
+  <div style="margin-top:30px;">
+    <div>Red: <span id="redVal">0</span></div>
+    <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="syncFromSliders()">
+    <div>Green: <span id="greenVal">0</span></div>
+    <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="syncFromSliders()">
+    <div>Blue: <span id="blueVal">0</span></div>
+    <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="syncFromSliders()">
   </div>
-  
-  <script>
-    function rgbTo9Scale(value) {
-      // Converts 0-255 to 0-9 scale
-      return Math.round(value / 255 * 9);
+</div>
+
+<script>
+  function updateFromHex() {
+    let hex = document.getElementById('hex').value;
+    if(/^#?[0-9A-F]{6}$/i.test(hex)) {
+      hex = hex.replace('#', '');
+      let r = parseInt(hex.substring(0,2), 16);
+      let g = parseInt(hex.substring(2,4), 16);
+      let b = parseInt(hex.substring(4,6), 16);
+      
+      // Set Sliders
+      document.getElementById('rS').value = Math.round(r / 255 * 9);
+      document.getElementById('gS').value = Math.round(g / 255 * 9);
+      document.getElementById('bS').value = Math.round(b / 255 * 9);
+      
+      calculate(r, g, b);
     }
+  }
 
-    function rgbToHex(r, g, b) {
-      // Converts RGB values to Hex code
-      return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
-    }
+  function syncFromSliders() {
+    let r9 = document.getElementById('rS').value;
+    let g9 = document.getElementById('gS').value;
+    let b9 = document.getElementById('bS').value;
+    
+    // Map 0-9 back to 0-255 for the "Input Color" preview
+    let r = Math.round((r9 / 9) * 255);
+    let g = Math.round((g9 / 9) * 255);
+    let b = Math.round((b9 / 9) * 255);
+    
+    calculate(r, g, b);
+  }
 
-    function hexToRgb(hex) {
-      // Converts a hex code to RGB values
-      hex = hex.replace("#", "");
-      if (hex.length !== 6) return null;
-      let r = parseInt(hex.substring(0, 2), 16);
-      let g = parseInt(hex.substring(2, 4), 16);
-      let b = parseInt(hex.substring(4, 6), 16);
-      return { r, g, b };
-    }
+  function calculate(r, g, b) {
+    let r9 = Math.round(r / 255 * 9);
+    let g9 = Math.round(g / 255 * 9);
+    let b9 = Math.round(b / 255 * 9);
 
-    function findClosestColor() {
-      let r = document.getElementById("red").value;
-      let g = document.getElementById("green").value;
-      let b = document.getElementById("blue").value;
-      let hex = document.getElementById("hex").value;
+    // Update Text
+    document.getElementById('result').innerHTML = `R: ${r9} &nbsp; G: ${g9} &nbsp; B: ${b9}`;
+    document.getElementById('redVal').innerText = r9;
+    document.getElementById('greenVal').innerText = g9;
+    document.getElementById('blueVal').innerText = b9;
 
-      let red, green, blue;
+    // Update Visuals
+    document.getElementById('desiredOverlay').style.backgroundColor = `rgb(${r},${g},${b})`;
+    
+    // Gorilla Tag 0-9 values scaled to actual screen RGB
+    let gr = Math.round((r9/9)*255);
+    let gg = Math.round((g9/9)*255);
+    let gb = Math.round((b9/9)*255);
+    document.getElementById('closestOverlay').style.backgroundColor = `rgb(${gr},${gg},${gb})`;
+  }
 
-      if (hex) {
-        let rgb = hexToRgb(hex);
-        if (!rgb) {
-          document.getElementById("result").innerHTML = "Invalid Hex Code!";
-          return;
-        }
-        red = rgb.r;
-        green = rgb.g;
-        blue = rgb.b;
-      } else if (r && g && b) {
-        red = parseInt(r);
-        green = parseInt(g);
-        blue = parseInt(b);
+  // Initialize
+  syncFromSliders();
+</script>
 
-        if (red < 0 || red > 255 || green < 0 || green > 255 || blue < 0 || blue > 255) {
-          document.getElementById("result").innerHTML = "RGB values must be between 0 and 255.";
-          return;
-        }
-      } else {
-        document.getElementById("result").innerHTML = "Please enter either RGB or Hex values.";
-        return;
-      }
-
-      // Convert to Gorilla Tag's 0-9 scale
-      let r9 = rgbTo9Scale(red);
-      let g9 = rgbTo9Scale(green);
-      let b9 = rgbTo9Scale(blue);
-
-      document.getElementById("result").innerHTML = 
-        `Closest Gorilla Tag Color: <br> R=${r9}, G=${g9}, B=${b9}`;
-
-      // Update the overlays
-      const desiredOverlay = document.getElementById("desiredOverlay");
-      const closestOverlay = document.getElementById("closestOverlay");
-
-      // Set the desired color
-      desiredOverlay.style.backgroundColor = `rgb(${red}, ${green}, ${blue})`;
-
-      // Set the closest Gorilla Tag color
-      const closestR = Math.round(r9 * 255 / 9);
-      const closestG = Math.round(g9 * 255 / 9);
-      const closestB = Math.round(b9 * 255 / 9);
-      closestOverlay.style.backgroundColor = `rgb(${closestR}, ${closestG}, ${closestB})`;
-
-      // Update the sliders
-      document.getElementById("redSlider").value = r9;
-      document.getElementById("greenSlider").value = g9;
-      document.getElementById("blueSlider").value = b9;
-
-      // Update the slider values text
-      document.getElementById("redValue").innerText = r9;
-      document.getElementById("greenValue").innerText = g9;
-      document.getElementById("blueValue").innerText = b9;
-
-      // Update the hex code
-      document.getElementById("hex").value = rgbToHex(closestR, closestG, closestB);
-    }
-
-    function updateColorFromSlider() {
-      // Get slider values
-      let redSlider = document.getElementById("redSlider").value;
-      let greenSlider = document.getElementById("greenSlider").value;
-      let blueSlider = document.getElementById("blueSlider").value;
-
-      // Update the displayed values next to sliders
-      document.getElementById("redValue").innerText = redSlider;
-      document.getElementById("greenValue").innerText = greenSlider;
-      document.getElementById("blueValue").innerText = blueSlider;
-
-      // Update the color in the inputs
-      document.getElementById("red").value = redSlider * 28;  // 0-9 scale to 0-255 range
-      document.getElementById("green").value = greenSlider * 28;
-      document.getElementById("blue").value = blueSlider * 28;
-
-      // Trigger the color match calculation
-      findClosestColor();
-    }
-
-    function updateColorFromInput() {
-      // Trigger the color match calculation from input fields
-      findClosestColor();
-    }
-
-    function updateColorFromHex() {
-      // Trigger the color match calculation from hex field
-      findClosestColor();
-    }
-
-    function updateColorFromTexture(event) {
-      // Get the position of the click in the texture box
-      let textureBox = event.target;
-      let rect = textureBox.getBoundingClientRect();
-      let x = event.clientX - rect.left;
-      let y = event.clientY - rect.top;
-
-      // Get the color of the clicked pixel
-      let ctx = textureBox.getContext('2d');
-      let imageData = ctx.getImageData(x, y, 1, 1);
-      let pixel = imageData.data;
-
-      // Extract the RGB values of the clicked pixel
-      let r = pixel[0];
-      let g = pixel[1];
-      let b = pixel[2];
-
-      // Update the color inputs and sliders based on the clicked pixel color
-      document.getElementById("red").value = r;
-      document.getElementById("green").value = g;
-      document.getElementById("blue").value = b;
-
-      // Update the sliders to reflect the color
-      document.getElementById("redSlider").value = rgbTo9Scale(r);
-      document.getElementById("greenSlider").value = rgbTo9Scale(g);
-      document.getElementById("blueSlider").value = rgbTo9Scale(b);
-
-      // Update the color code
-      document.getElementById("hex").value = rgbToHex(r, g, b);
-
-      // Trigger the color match calculation
-      findClosestColor();
-    }
-  </script>
 </body>
 </html>
-
