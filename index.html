@@ -18,9 +18,47 @@
       padding: 20px;
     }
 
-    .container {
-      max-width: 750px;
+    .main-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 20px;
+      max-width: 950px;
       margin: auto;
+    }
+
+    /* Left Side Switch */
+    .sidebar {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 15px;
+      border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .fur-option {
+      padding: 15px;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.2s;
+      font-weight: bold;
+      font-size: 14px;
+      color: #888;
+    }
+
+    .fur-option.active {
+      border-color: #fff;
+      color: #fff;
+      background: #333;
+    }
+
+    /* Main Container */
+    .container {
+      flex-grow: 1;
       background: #1e1e1e;
       padding: 30px;
       border-radius: 20px;
@@ -45,6 +83,7 @@
       width: 180px;
       height: 180px;
       cursor: crosshair;
+      background: #000;
     }
 
     .canvas-label {
@@ -52,7 +91,6 @@
       font-size: 12px;
       font-weight: bold;
       color: #888;
-      letter-spacing: 1px;
       text-transform: uppercase;
     }
 
@@ -66,9 +104,7 @@
     .val-g { color: #3eff3e; }
     .val-b { color: #3e3eff; }
 
-    .hex-container {
-      margin-bottom: 10px;
-    }
+    .hex-container { margin-bottom: 10px; }
     #hexInput {
       background: #121212;
       border: 2px solid #444;
@@ -76,147 +112,126 @@
       padding: 10px;
       border-radius: 8px;
       font-family: monospace;
-      font-size: 16px;
       text-align: center;
       width: 120px;
     }
 
-    /* General Slider Track */
     .slider { 
       -webkit-appearance: none;
-      width: 80%; 
-      height: 8px;
-      background: #333;
-      outline: none;
-      border-radius: 5px;
-      margin: 20px 0;
+      width: 80%; height: 8px; background: #333; outline: none; border-radius: 5px; margin: 20px 0;
     }
 
-    /* Custom Thumb Styling - Specific Colors */
     .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      border: 2px solid #fff; /* High contrast border */
-      cursor: pointer;
-      box-shadow: 0 0 5px #000;
+      -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; cursor: pointer;
     }
+    #rS::-webkit-slider-thumb { background: #801a1a; }
+    #gS::-webkit-slider-thumb { background: #1a801a; }
+    #bS::-webkit-slider-thumb { background: #1a1a80; }
 
-    #rS::-webkit-slider-thumb { background: #801a1a; } /* Dark Red */
-    #gS::-webkit-slider-thumb { background: #1a801a; } /* Dark Green */
-    #bS::-webkit-slider-thumb { background: #1a1a80; } /* Dark Blue */
+    .save-slots { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+    .slot { width: 100px; background: #121212; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; }
+    .slot.selected { border-color: #fff; background: #2a2a2a; }
+    .slot-preview { width: 100%; height: 40px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #000; }
 
-    /* For Firefox Support */
-    #rS::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: #801a1a; }
-    #gS::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: #1a801a; }
-    #bS::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; background: #1a1a80; }
-
-    .save-slots {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      margin-top: 20px;
-    }
-    .slot {
-      width: 110px;
-      background: #121212;
-      padding: 10px;
-      border-radius: 10px;
-      border: 2px solid #444;
-      cursor: pointer;
-    }
-    .slot.selected {
-      border-color: #fff;
-      background: #2a2a2a;
-      transform: scale(1.05);
-    }
-    .slot-preview {
-      width: 100%;
-      height: 45px;
-      border-radius: 5px;
-      margin-bottom: 8px;
-      background: #222;
-      border: 1px solid #000;
-    }
-
-    .btn {
-      padding: 12px 24px;
-      background: #444;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      margin-top: 15px;
-    }
-    .btn:hover { background: #555; }
-
-    .disclaimer {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #888;
-    }
+    .btn { padding: 12px 24px; background: #444; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+    .disclaimer { margin-top: 20px; font-size: 14px; color: #888; }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h1>Gorilla Tag Fur Color Picker</h1>
+<div class="main-wrapper">
+  <div class="sidebar">
+    <div id="optDefault" class="fur-option active" onclick="setFurType('default')">Default Fur</div>
+    <div id="optCyber" class="fur-option" onclick="setFurType('cyber')">Cyber Fur</div>
+  </div>
 
-  <div class="display-flex">
-    <div class="canvas-container">
-      <canvas id="desiredCanvas" width="200" height="200"></canvas>
-      <div class="canvas-label">Desired</div>
+  <div class="container">
+    <h1>Gorilla Tag Fur Color Picker</h1>
+
+    <div class="display-flex">
+      <div class="canvas-container">
+        <canvas id="desiredCanvas" width="200" height="200"></canvas>
+        <div class="canvas-label">Desired</div>
+      </div>
+      <div class="canvas-container">
+        <canvas id="closestCanvas" width="200" height="200"></canvas>
+        <div class="canvas-label">Closest Match</div>
+      </div>
     </div>
-    <div class="canvas-container">
-      <canvas id="closestCanvas" width="200" height="200"></canvas>
-      <div class="canvas-label">Closest Match</div>
+
+    <div class="result-display">
+      <span class="val-r" id="rNum">0</span> 
+      <span class="val-g" id="gNum">0</span> 
+      <span class="val-b" id="bNum">0</span>
     </div>
-  </div>
 
-  <div class="result-display">
-    <span class="val-r" id="rNum">0</span> 
-    <span class="val-g" id="gNum">0</span> 
-    <span class="val-b" id="bNum">0</span>
-  </div>
-
-  <div class="hex-container">
-    <input type="text" id="hexInput" placeholder="#FFFFFF" maxlength="7" oninput="updateFromHex()">
-  </div>
-
-  <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync()">
-  <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="sync()">
-  <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="sync()">
-
-  <div class="disclaimer">
-    *Note: 0 0 0 appears as a shiny black in-game due to material shaders.
-  </div>
-
-  <div style="margin-top: 40px;">
-    <h3>SAVED COLORS</h3>
-    <div class="save-slots">
-      <div class="slot selected" onclick="selectSlot(0)" id="slot0"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="selectSlot(1)" id="slot1"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="selectSlot(2)" id="slot2"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="selectSlot(3)" id="slot3"><div class="slot-preview"></div>Empty</div>
-      <div class="slot" onclick="selectSlot(4)" id="slot4"><div class="slot-preview"></div>Empty</div>
+    <div class="hex-container">
+      <input type="text" id="hexInput" placeholder="#FFFFFF" maxlength="7" oninput="updateFromHex()">
     </div>
-    <button class="btn" onclick="saveToSelected()">Save to Selected Slot</button>
+
+    <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync()">
+    <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="sync()">
+    <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="sync()">
+
+    <div class="disclaimer">*Note: 0 0 0 appears as a shiny black in-game due to material shaders.</div>
+
+    <div style="margin-top: 30px;">
+      <h3>SAVED COLORS</h3>
+      <div class="save-slots">
+        <div class="slot selected" onclick="selectSlot(0)" id="slot0"><div class="slot-preview"></div>Empty</div>
+        <div class="slot" onclick="selectSlot(1)" id="slot1"><div class="slot-preview"></div>Empty</div>
+        <div class="slot" onclick="selectSlot(2)" id="slot2"><div class="slot-preview"></div>Empty</div>
+        <div class="slot" onclick="selectSlot(3)" id="slot3"><div class="slot-preview"></div>Empty</div>
+        <div class="slot" onclick="selectSlot(4)" id="slot4"><div class="slot-preview"></div>Empty</div>
+      </div>
+      <button class="btn" onclick="saveToSelected()">Save to Selected Slot</button>
+    </div>
   </div>
 </div>
 
 <script>
   const dCtx = document.getElementById('desiredCanvas').getContext('2d');
   const cCtx = document.getElementById('closestCanvas').getContext('2d');
+  
   const furImg = new Image();
   furImg.src = 'gorilla-fur-texture.png';
+  
+  const cyberImg = new Image();
+  cyberImg.src = 'cyber-fur.png';
 
+  let currentFurType = 'default';
   let selectedSlotIndex = 0;
   let savedColors = [null, null, null, null, null];
 
-  furImg.onload = () => sync();
+  function setFurType(type) {
+    currentFurType = type;
+    document.getElementById('optDefault').classList.toggle('active', type === 'default');
+    document.getElementById('optCyber').classList.toggle('active', type === 'cyber');
+    sync();
+  }
+
+  function draw(ctx, r, g, b) {
+    ctx.clearRect(0, 0, 200, 200);
+    const activeImg = currentFurType === 'default' ? furImg : cyberImg;
+
+    if (currentFurType === 'default') {
+      // Bottom layer: Color
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillRect(0, 0, 200, 200);
+      // Top layer: Texture (Face hides color, transparent fur lets it through)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(activeImg, 0, 0, 200, 200);
+    } else {
+      // Cyber Fur: Black & White tint logic
+      ctx.drawImage(activeImg, 0, 0, 200, 200);
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillRect(0, 0, 200, 200);
+      ctx.globalCompositeOperation = 'destination-atop';
+      ctx.drawImage(activeImg, 0, 0, 200, 200);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
 
   function sync() {
     let r9 = document.getElementById('rS').value;
@@ -233,20 +248,11 @@
 
     draw(dCtx, r, g, b);
     draw(cCtx, r, g, b);
-    
     document.getElementById('hexInput').value = rgbToHex(r, g, b);
   }
 
-  function draw(ctx, r, g, b) {
-    ctx.clearRect(0, 0, 200, 200);
-    ctx.drawImage(furImg, 0, 0, 200, 200);
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-    ctx.fillRect(0, 0, 200, 200);
-    ctx.globalCompositeOperation = 'destination-atop';
-    ctx.drawImage(furImg, 0, 0, 200, 200);
-    ctx.globalCompositeOperation = 'source-over';
-  }
+  // Initial load sync
+  furImg.onload = cyberImg.onload = () => sync();
 
   function updateFromHex() {
     let hex = document.getElementById('hexInput').value.replace('#', '');
@@ -254,7 +260,6 @@
       let r = parseInt(hex.substring(0, 2), 16);
       let g = parseInt(hex.substring(2, 4), 16);
       let b = parseInt(hex.substring(4, 6), 16);
-
       document.getElementById('rS').value = Math.round(r / 255 * 9);
       document.getElementById('gS').value = Math.round(g / 255 * 9);
       document.getElementById('bS').value = Math.round(b / 255 * 9);
@@ -270,7 +275,6 @@
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('selected'));
     document.getElementById(`slot${i}`).classList.add('selected');
     selectedSlotIndex = i;
-    
     if(savedColors[i]) {
       document.getElementById('rS').value = savedColors[i].r;
       document.getElementById('gS').value = savedColors[i].g;
@@ -283,13 +287,10 @@
     let r9 = document.getElementById('rS').value;
     let g9 = document.getElementById('gS').value;
     let b9 = document.getElementById('bS').value;
-    
     savedColors[selectedSlotIndex] = { r: r9, g: g9, b: b9 };
-    
     let r = Math.round((r9/9)*255);
     let g = Math.round((g9/9)*255);
     let b = Math.round((b9/9)*255);
-    
     const slot = document.getElementById(`slot${selectedSlotIndex}`);
     slot.querySelector('.slot-preview').style.backgroundColor = `rgb(${r},${g},${b})`;
     slot.innerHTML = `<div class="slot-preview" style="background:rgb(${r},${g},${b})"></div>${r9} ${g9} ${b9}`;
