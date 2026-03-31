@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Square Layout Visualizer</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #1e1e1e;
+      color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 50px;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background-color: #333;
+      color: white;
+      text-align: center;
+      width: 120px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 4px;
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      margin-left: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #info {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #aaa;
+    }
+    #grid {
+      display: grid;
+      gap: 4px;
+    }
+    .box {
+      width: 40px;
+      height: 40px;
+      background-color: #333;
+      border-radius: 4px;
+    }
+    .filled {
+      background-color: #4CAF50; /* Green for filled slots */
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Layout Visualizer</h2>
+  
+  <div class="controls">
+    <input type="number" id="itemCount" placeholder="e.g. 50" min="1">
+    <button onclick="generateGrid()">Visualize</button>
+  </div>
+
+  <div id="info">Enter a number to see the grid.</div>
+  <div id="grid"></div>
+
+  <script>
+    function generateGrid() {
+      const count = parseInt(document.getElementById('itemCount').value);
+      if (!count || count <= 0) return;
+
+      // Find the nearest square root and round up to get the side length
+      const sideLength = Math.ceil(Math.sqrt(count));
+      const totalCapacity = sideLength * sideLength;
+      const emptySpaces = totalCapacity - count;
+
+      const grid = document.getElementById('grid');
+      const info = document.getElementById('info');
+
+      // Set the CSS grid columns dynamically based on the calculated side length
+      grid.style.gridTemplateColumns = `repeat(${sideLength}, 40px)`;
+      grid.innerHTML = ''; // Clear the previous grid
+
+      // Update the info text
+      info.innerText = `Grid: ${sideLength}x${sideLength} | Total Capacity: ${totalCapacity} | Empty: ${emptySpaces}`;
+
+      // Generate the boxes
+      for (let i = 0; i < totalCapacity; i++) {
+        const box = document.createElement('div');
+        box.classList.add('box');
+        
+        // Fill the boxes up to the inputted number
+        if (i < count) {
+          box.classList.add('filled');
+        }
+        
+        grid.appendChild(box);
+      }
+    }
+  </script>
+
+</body>
+</html>
