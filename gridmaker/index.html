@@ -21,6 +21,7 @@
       background-color: #2a2a2a;
       padding: 15px;
       border-radius: 8px;
+      align-items: center;
     }
     .control-group {
       display: flex;
@@ -54,6 +55,16 @@
     button:hover {
       background-color: #45a049;
     }
+    #centerBtn {
+      background-color: #555;
+      width: 120px;
+    }
+    #centerBtn.active {
+      background-color: #2196F3; /* Blue when active */
+    }
+    #centerBtn.active:hover {
+      background-color: #1976D2;
+    }
     #info {
       font-size: 18px;
       margin-bottom: 20px;
@@ -71,13 +82,13 @@
       border-radius: 4px;
     }
     .filled {
-      background-color: #4CAF50; /* Green for filled slots */
+      background-color: #4CAF50; /* Green */
     }
     .remainder-filled {
-      background-color: #ff9800; /* Orange for remainders to stand out */
+      background-color: #ff9800; /* Orange */
     }
     #remaindersSection {
-      display: none; /* Hidden by default */
+      display: none;
       text-align: center;
       border-top: 2px dashed #555;
       padding-top: 20px;
@@ -114,6 +125,11 @@
         <button onclick="adjustGrid(1)">+</button>
       </div>
     </div>
+
+    <div class="control-group">
+      <label>Alignment</label>
+      <button id="centerBtn" onclick="toggleCenter()">Center: OFF</button>
+    </div>
   </div>
 
   <div id="info"></div>
@@ -125,7 +141,21 @@
   </div>
 
   <script>
-    // Automatically find the best starting square when item count changes
+    let isCentered = false;
+
+    function toggleCenter() {
+      isCentered = !isCentered;
+      const btn = document.getElementById('centerBtn');
+      btn.innerText = isCentered ? 'Center: ON' : 'Center: OFF';
+      
+      if (isCentered) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+      drawGrid();
+    }
+
     function autoCalculate() {
       const count = parseInt(document.getElementById('itemCount').value) || 0;
       const bestSize = Math.ceil(Math.sqrt(count)) || 1;
@@ -133,16 +163,14 @@
       drawGrid();
     }
 
-    // Handle the +/- buttons for grid size
     function adjustGrid(change) {
       const sizeInput = document.getElementById('gridSize');
       let newSize = parseInt(sizeInput.value) + change;
-      if (newSize < 1) newSize = 1; // Prevent 0 or negative grid sizes
+      if (newSize < 1) newSize = 1;
       sizeInput.value = newSize;
       drawGrid();
     }
 
-    // Draw the grids based on current inputs
     function drawGrid() {
       const count = parseInt(document.getElementById('itemCount').value) || 0;
       const size = parseInt(document.getElementById('gridSize').value) || 1;
@@ -153,19 +181,48 @@
       const remaindersSection = document.getElementById('remaindersSection');
       const remaindersGrid = document.getElementById('remaindersGrid');
 
-      // Set up the main grid layout
       grid.style.gridTemplateColumns = `repeat(${size}, 40px)`;
       grid.innerHTML = ''; 
 
-      // Update info text
       info.innerText = `Grid: ${size}x${size} | Total Capacity: ${capacity}`;
 
-      // Fill the main grid
       const mainBlocksToFill = Math.min(count, capacity);
+      const gridArray = new Array(capacity).fill(false);
+
+      if (isCentered) {
+        // Calculate the optimal square shape for the items
+        const innerW = Math.ceil(Math.sqrt(mainBlocksToFill));
+        const innerH = Math.ceil(mainBlocksToFill / innerW);
+        
+        // Find offsets to center that shape in the main grid
+        const startX = Math.max(0, Math.floor((size - innerW) / 2));
+        const startY = Math.max(0, Math.floor((size - innerH) / 2));
+
+        let placed = 0;
+        for (let r = 0; r < innerH; r++) {
+          for (let c = 0; c < innerW; c++) {
+            if (placed < mainBlocksToFill) {
+              const gridR = startY + r;
+              const gridC = startX + c;
+              if (gridR < size && gridC < size) {
+                gridArray[gridR * size + gridC] = true;
+              }
+              placed++;
+            }
+          }
+        }
+      } else {
+        // Default top-left fill
+        for (let i = 0; i < mainBlocksToFill; i++) {
+          gridArray[i] = true;
+        }
+      }
+
+      // Render the grid boxes
       for (let i = 0; i < capacity; i++) {
         const box = document.createElement('div');
         box.classList.add('box');
-        if (i < mainBlocksToFill) {
+        if (gridArray[i]) {
           box.classList.add('filled');
         }
         grid.appendChild(box);
@@ -187,7 +244,6 @@
       }
     }
 
-    // Run once on load to show the initial 50 block setup
     window.onload = autoCalculate;
   </script>
 
