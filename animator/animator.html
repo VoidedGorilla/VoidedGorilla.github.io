@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sprite Sheet Animator</title>
+  <style>
+    body {
+      background-color: #1e1e1e;
+      color: #eeeeee;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 40px;
+    }
+    .controls {
+      background: #2d2d2d;
+      padding: 15px 25px;
+      border-radius: 6px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      margin-bottom: 30px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    }
+    canvas {
+      border: 2px solid #555;
+      background: #000;
+      image-rendering: pixelated; /* Keeps pixel art crisp */
+    }
+    input[type="number"] {
+      width: 50px;
+      background: #444;
+      color: white;
+      border: 1px solid #666;
+      border-radius: 3px;
+      padding: 3px;
+    }
+    input[type="file"] {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="controls">
+    <input type="file" id="fileUpload" accept="image/png, image/jpeg">
+    
+    <label>Columns: <input type="number" id="cols" value="10" min="1"></label>
+    <label>Rows: <input type="number" id="rows" value="3" min="1"></label>
+    <label>FPS: <input type="number" id="fps" value="15" min="1"></label>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    let cols = 10, rows = 3, fps = 15;
+    let currentFrame = 0, lastTime = 0, animationId;
+
+    // 1. Listen for file uploads and load the image into the canvas
+    document.getElementById('fileUpload').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) {
+        img.src = URL.createObjectURL(file);
+      }
+    });
+
+    // 2. Listen for changes to the numbers and update variables instantly
+    document.getElementById('cols').addEventListener('input', e => { cols = Math.max(1, e.target.value); currentFrame = 0; });
+    document.getElementById('rows').addEventListener('input', e => { rows = Math.max(1, e.target.value); currentFrame = 0; });
+    document.getElementById('fps').addEventListener('input', e => fps = Math.max(1, e.target.value));
+
+    // 3. Start animation loop when image loads
+    img.onload = () => {
+      if (animationId) cancelAnimationFrame(animationId);
+      currentFrame = 0;
+      requestAnimationFrame(animate);
+    };
+
+    // 4. The animation logic
+    function animate(timestamp) {
+      if (!img.src) return;
+      if (!lastTime) lastTime = timestamp;
+      
+      const elapsed = timestamp - lastTime;
+      const frameDuration = 1000 / fps;
+
+      if (elapsed > frameDuration) {
+        const frameWidth = img.width / cols;
+        const frameHeight = img.height / rows;
+        
+        canvas.width = frameWidth;
+        canvas.height = frameHeight;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const totalFrames = cols * rows;
+        const col = currentFrame % cols;
+        const row = Math.floor(currentFrame / cols);
+
+        // Draw the specific slice of the uploaded image
+        ctx.drawImage(
+          img,
+          col * frameWidth, row * frameHeight, frameWidth, frameHeight,
+          0, 0, frameWidth, frameHeight
+        );
+
+        currentFrame = (currentFrame + 1) % totalFrames;
+        lastTime = timestamp;
+      }
+      animationId = requestAnimationFrame(animate);
+    }
+  </script>
+</body>
+</html>
