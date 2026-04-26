@@ -35,6 +35,7 @@
       display: flex;
       gap: 15px;
       align-items: center;
+      flex-wrap: wrap;
     }
     button, select, input {
       background: #333;
@@ -71,6 +72,13 @@
           <option value="instant">Instant</option>
         </select>
       </label>
+
+      <label id="animStyleContainer">Style: 
+        <select id="animStyle">
+          <option value="char">Character</option>
+          <option value="line">Line</option>
+        </select>
+      </label>
       
       <label id="delayContainer">Delay: 
         <input type="number" id="delay" value="20" min="1" style="width: 60px;"> ms
@@ -85,50 +93,12 @@
     const input = document.getElementById('input');
     const output = document.getElementById('output');
     const modeSelect = document.getElementById('mode');
+    const animStyleSelect = document.getElementById('animStyle');
+    const animStyleContainer = document.getElementById('animStyleContainer');
     const delayContainer = document.getElementById('delayContainer');
     const delayInput = document.getElementById('delay');
     const playBtn = document.getElementById('playBtn');
     let timer;
-
-    const defaultText = `<#FF8000>WARNING: EXTREME DAMAGE SUSTAINED.
-<#FF8000>RUNNING DIAGNOSTIC
-<#FF0000>ERROR: ARM CORE MODULE #1 NOT RESPONDING
-<#FF0000>ERROR: ARM CORE MODULE #2 NOT RESPONDING
-<#FF8000>WARNING: COMBAT SYSTEMS INOPERABLE
-<#FF8000>ATTEMPTING RECONSTRUCTION
-<#FF0000>ERROR: SELF-REPAIR NEXUS NOT RESPONDING
-<#FF0000>INSUFFICIENT BLOOD.
-<#FF0000>INSUFFICIENT BLOOD.
-<#FF8000>INITIATING ESCAPE PROTOCOL
-<#FF8000>ATTEMPTING CONNECTION WITH LIMBIC MODULES
-<#FF0000>ERROR: LEG CORE MODULE #1 NOT RESPONDING
-<#FF0000>ERROR: LEG CORE MODULE #2 NOT RESPONDING
-<#FF8000>WARNING: UNABLE TO SUSTAIN MOTOR FUNCTIONS
-<#FF0000>ERROR: VISUAL CORTEX MALFUNCTION
-<#FF0000>ERROR: LIMBIC FUNCTION NOT RESPONDING
-<#FF0000>INSUFFICIENT BLOOD.
-<#FF0000>INSUFFICIENT BLOOD.
-<#FF8000>WARNING: UNABLE TO SUSTAIN INTERNAL ORGANS
-<#FF0000>! PULSE FAILURE !
-<#FF0000>! PULSE FAILURE !
-<#FF0000>! PULSE FAILURE !
-<#FF0000>-!- SHUTDOWN IMMINENT -!-
-<#FF0000>ERROR: NO VOCAL INTERFACE DETECTED, UNABLE TO COMPLETE TASK
-<#FF0000>! PULSE FAILURE !
-<#FF0000>! PULSE FAILURE !
-<#FF0000>INSUFFICIENT BLOOD.
-<#FF0000>INSUFFICIENT BLOOD.
-<#FF8000>WARNING: UNABLE TO SUSTAIN BASIC FUNCTIONS
-<#FF0000>-!- SHUTDOWN IMMINENT -!-
-<#FF0000>-!- SHUTDOWN IMMINENT -!-
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.
-<#FF0000>I DON'T WANT TO DIE.`;
 
     function parse(text) {
       let chars = [];
@@ -149,10 +119,12 @@
     function updateMode() {
       if (modeSelect.value === 'instant') {
         delayContainer.style.display = 'none';
+        animStyleContainer.style.display = 'none';
         playBtn.style.display = 'none';
         renderInstant();
       } else {
         delayContainer.style.display = 'inline-block';
+        animStyleContainer.style.display = 'inline-block';
         playBtn.style.display = 'inline-block';
         playAnim();
       }
@@ -177,24 +149,54 @@
     function playAnim() {
       clearTimeout(timer);
       output.innerHTML = '';
+      if (!input.value) return;
+      
       let chars = parse(input.value);
       let delay = parseInt(delayInput.value) || 20;
+      let style = animStyleSelect.value;
       let i = 0;
       
-      function type() {
-        if (i < chars.length) {
-          let span = document.createElement('span');
-          span.style.color = chars[i].color;
-          span.textContent = chars[i].c;
-          output.appendChild(span);
-          i++;
-          timer = setTimeout(type, delay);
+      if (style === 'char') {
+        function typeChar() {
+          if (i < chars.length) {
+            let span = document.createElement('span');
+            span.style.color = chars[i].color;
+            span.textContent = chars[i].c;
+            output.appendChild(span);
+            i++;
+            timer = setTimeout(typeChar, delay);
+          }
         }
+        typeChar();
+      } else if (style === 'line') {
+        let lines = [];
+        let currentLine = [];
+        for (let j = 0; j < chars.length; j++) {
+          currentLine.push(chars[j]);
+          if (chars[j].c === '\n') {
+            lines.push(currentLine);
+            currentLine = [];
+          }
+        }
+        if (currentLine.length > 0) lines.push(currentLine);
+
+        function typeLine() {
+          if (i < lines.length) {
+            lines[i].forEach(obj => {
+              let span = document.createElement('span');
+              span.style.color = obj.color;
+              span.textContent = obj.c;
+              output.appendChild(span);
+            });
+            i++;
+            timer = setTimeout(typeLine, delay);
+          }
+        }
+        typeLine();
       }
-      type();
     }
 
-    input.value = defaultText;
+    input.value = "";
     updateMode();
   </script>
 </body>
