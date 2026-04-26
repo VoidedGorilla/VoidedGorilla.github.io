@@ -100,22 +100,131 @@
     const playBtn = document.getElementById('playBtn');
     let timer;
 
+    const colors = {
+      'black':'#000000', 'dark_blue':'#0000AA', 'dark_green':'#00AA00', 'dark_aqua':'#00AAAA',
+      'dark_red':'#AA0000', 'dark_purple':'#AA00AA', 'gold':'#FFAA00', 'gray':'#AAAAAA',
+      'dark_gray':'#555555', 'blue':'#5555FF', 'green':'#55FF55', 'aqua':'#55FFFF',
+      'red':'#FF5555', 'light_purple':'#FF55FF', 'yellow':'#FFFF55', 'white':'#FFFFFF'
+    };
+
+    const formats = {
+      'bold':'font-weight:bold;', 'b':'font-weight:bold;',
+      'italic':'font-style:italic;', 'i':'font-style:italic;',
+      'underlined':'text-decoration:underline;', 'u':'text-decoration:underline;',
+      'strikethrough':'text-decoration:line-through;', 'st':'text-decoration:line-through;'
+    };
+
+    // Math for interpolating two hex colors
+    function lerpColor(color1, color2, factor) {
+      if (factor < 0) factor = 0;
+      if (factor > 1) factor = 1;
+      let c1 = parseInt(color1.substring(1), 16);
+      let c2 = parseInt(color2.substring(1), 16);
+      let r1 = (c1 >> 16) & 255, g1 = (c1 >> 8) & 255, b1 = c1 & 255;
+      let r2 = (c2 >> 16) & 255, g2 = (c2 >> 8) & 255, b2 = c2 & 255;
+      let r = Math.round(r1 + factor * (r2 - r1));
+      let g = Math.round(g1 + factor * (g2 - g1));
+      let b = Math.round(b1 + factor * (b2 - b1));
+      return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    }
+
     function parse(text) {
       let chars = [];
       let color = '#FFF';
+      let activeFormats = new Set();
+      let activeGradient = null;
       let i = 0;
+      
       while (i < text.length) {
-        if (text.substring(i, i+2) === '<#') {
-          color = '#' + text.substring(i+2, i+8);
-          i += 9;
-          continue;
+        // Tag Parsing Logic
+        if (text[i] === '<') {
+          let end = text.indexOf('>', i);
+          if (end !== -1) {
+            let tag = text.substring(i + 1, end).toLowerCase();
+            let isClosing = tag.startsWith('/');
+            let coreTag = isClosing ? tag.substring(1) : tag;
+
+            if (coreTag === 'reset') {
+              color = '#FFF';
+              activeFormats.clear();
+              activeGradient = null;
+              i = end + 1; continue;
+            } 
+            
+            // Gradient Handling
+            if (coreTag.startsWith('gradient:')) {
+              let parts = coreTag.split(':');
+              if (parts.length >= 3) {
+                // Find how many characters this gradient will apply to
+                let gradientLength = 0;
+                let j = end + 1;
+                while (j < text.length) {
+                  if (text[j] === '<') {
+                    let nextEnd = text.indexOf('>', j);
+                    if (nextEnd !== -1) {
+                      let nextTag = text.substring(j + 1, nextEnd).toLowerCase();
+                      // Stop gradient count if we hit a closing tag, a reset, or a new color
+                      if (nextTag === '/gradient' || nextTag === 'reset' || colors[nextTag] || (nextTag.startsWith('#') && nextTag.length === 7)) {
+                        break;
+                      }
+                      j = nextEnd + 1;
+                      continue;
+                    }
+                  }
+                  gradientLength++;
+                  j++;
+                }
+                
+                activeGradient = {
+                  c1: parts[1].startsWith('#') ? parts[1] : colors[parts[1]] || '#FFFFFF',
+                  c2: parts[2].startsWith('#') ? parts[2] : colors[parts[2]] || '#FFFFFF',
+                  length: Math.max(1, gradientLength),
+                  step: 0
+                };
+              }
+              i = end + 1; continue;
+            }
+
+            if (coreTag === 'gradient' && isClosing) {
+              activeGradient = null;
+              i = end + 1; continue;
+            }
+
+            // Standard Colors & Formatting
+            if (coreTag.startsWith('#') && coreTag.length === 7) {
+              if (!isClosing) { color = coreTag; activeGradient = null; }
+              i = end + 1; continue;
+            } else if (colors[coreTag]) {
+              if (!isClosing) { color = colors[coreTag]; activeGradient = null; }
+              i = end + 1; continue;
+            } else if (formats[coreTag]) {
+              if (isClosing) activeFormats.delete(formats[coreTag]);
+              else activeFormats.add(formats[coreTag]);
+              i = end + 1; continue;
+            } else if (coreTag === 'color' && isClosing) {
+              color = '#FFF'; 
+              activeGradient = null;
+              i = end + 1; continue;
+            }
+          }
         }
-        chars.push({ c: text[i], color: color });
+        
+        // Apply Gradient Math if active
+        let appliedColor = color;
+        if (activeGradient) {
+          let factor = activeGradient.step / (activeGradient.length - 1 || 1);
+          appliedColor = lerpColor(activeGradient.c1, activeGradient.c2, factor);
+          activeGradient.step++;
+        }
+
+        let styleStr = `color: ${appliedColor}; ` + Array.from(activeFormats).join(' ');
+        chars.push({ c: text[i], style: styleStr });
         i++;
       }
       return chars;
     }
 
+    // --- Viewer Control Logic (Same as before) ---
     function updateMode() {
       if (modeSelect.value === 'instant') {
         delayContainer.style.display = 'none';
@@ -131,9 +240,7 @@
     }
 
     function handleTyping() {
-      if (modeSelect.value === 'instant') {
-        renderInstant();
-      }
+      if (modeSelect.value === 'instant') renderInstant();
     }
 
     function renderInstant() {
@@ -141,7 +248,7 @@
       let chars = parse(input.value);
       let html = '';
       chars.forEach(obj => {
-        html += `<span style="color: ${obj.color}">${obj.c}</span>`;
+        html += `<span style="${obj.style}">${obj.c}</span>`;
       });
       output.innerHTML = html;
     }
@@ -160,7 +267,7 @@
         function typeChar() {
           if (i < chars.length) {
             let span = document.createElement('span');
-            span.style.color = chars[i].color;
+            span.style = chars[i].style;
             span.textContent = chars[i].c;
             output.appendChild(span);
             i++;
@@ -184,7 +291,7 @@
           if (i < lines.length) {
             lines[i].forEach(obj => {
               let span = document.createElement('span');
-              span.style.color = obj.color;
+              span.style = obj.style;
               span.textContent = obj.c;
               output.appendChild(span);
             });
