@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      margin: 0;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    textarea {
+      width: 50%;
+      background: #000;
+      color: #aaa;
+      border: 1px solid #333;
+      padding: 10px;
+      font-family: monospace;
+      resize: none;
+    }
+    #viewer {
+      width: 50%;
+      display: flex;
+      flex-direction: column;
+    }
+    .controls {
+      background: #222;
+      padding: 10px;
+      border: 1px solid #333;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+    button, select, input {
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      padding: 5px 10px;
+      font-family: monospace;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:hover {
+      background: #444;
+    }
+    #output {
+      background: #000;
+      padding: 10px;
+      white-space: pre-wrap;
+      border: 1px solid #333;
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <textarea id="input" oninput="handleTyping()"></textarea>
+  
+  <div id="viewer">
+    <div class="controls">
+      <label>Mode: 
+        <select id="mode" onchange="updateMode()">
+          <option value="typewriter">Typewriter</option>
+          <option value="instant">Instant</option>
+        </select>
+      </label>
+      
+      <label id="delayContainer">Delay: 
+        <input type="number" id="delay" value="20" min="1" style="width: 60px;"> ms
+      </label>
+      
+      <button id="playBtn" onclick="playAnim()">Play Animation</button>
+    </div>
+    <div id="output"></div>
+  </div>
+
+  <script>
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const modeSelect = document.getElementById('mode');
+    const delayContainer = document.getElementById('delayContainer');
+    const delayInput = document.getElementById('delay');
+    const playBtn = document.getElementById('playBtn');
+    let timer;
+
+    const defaultText = `<#FF8000>WARNING: EXTREME DAMAGE SUSTAINED.
+<#FF8000>RUNNING DIAGNOSTIC
+<#FF0000>ERROR: ARM CORE MODULE #1 NOT RESPONDING
+<#FF0000>ERROR: ARM CORE MODULE #2 NOT RESPONDING
+<#FF8000>WARNING: COMBAT SYSTEMS INOPERABLE
+<#FF8000>ATTEMPTING RECONSTRUCTION
+<#FF0000>ERROR: SELF-REPAIR NEXUS NOT RESPONDING
+<#FF0000>INSUFFICIENT BLOOD.
+<#FF0000>INSUFFICIENT BLOOD.
+<#FF8000>INITIATING ESCAPE PROTOCOL
+<#FF8000>ATTEMPTING CONNECTION WITH LIMBIC MODULES
+<#FF0000>ERROR: LEG CORE MODULE #1 NOT RESPONDING
+<#FF0000>ERROR: LEG CORE MODULE #2 NOT RESPONDING
+<#FF8000>WARNING: UNABLE TO SUSTAIN MOTOR FUNCTIONS
+<#FF0000>ERROR: VISUAL CORTEX MALFUNCTION
+<#FF0000>ERROR: LIMBIC FUNCTION NOT RESPONDING
+<#FF0000>INSUFFICIENT BLOOD.
+<#FF0000>INSUFFICIENT BLOOD.
+<#FF8000>WARNING: UNABLE TO SUSTAIN INTERNAL ORGANS
+<#FF0000>! PULSE FAILURE !
+<#FF0000>! PULSE FAILURE !
+<#FF0000>! PULSE FAILURE !
+<#FF0000>-!- SHUTDOWN IMMINENT -!-
+<#FF0000>ERROR: NO VOCAL INTERFACE DETECTED, UNABLE TO COMPLETE TASK
+<#FF0000>! PULSE FAILURE !
+<#FF0000>! PULSE FAILURE !
+<#FF0000>INSUFFICIENT BLOOD.
+<#FF0000>INSUFFICIENT BLOOD.
+<#FF8000>WARNING: UNABLE TO SUSTAIN BASIC FUNCTIONS
+<#FF0000>-!- SHUTDOWN IMMINENT -!-
+<#FF0000>-!- SHUTDOWN IMMINENT -!-
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.
+<#FF0000>I DON'T WANT TO DIE.`;
+
+    function parse(text) {
+      let chars = [];
+      let color = '#FFF';
+      let i = 0;
+      while (i < text.length) {
+        if (text.substring(i, i+2) === '<#') {
+          color = '#' + text.substring(i+2, i+8);
+          i += 9;
+          continue;
+        }
+        chars.push({ c: text[i], color: color });
+        i++;
+      }
+      return chars;
+    }
+
+    function updateMode() {
+      if (modeSelect.value === 'instant') {
+        delayContainer.style.display = 'none';
+        playBtn.style.display = 'none';
+        renderInstant();
+      } else {
+        delayContainer.style.display = 'inline-block';
+        playBtn.style.display = 'inline-block';
+        playAnim();
+      }
+    }
+
+    function handleTyping() {
+      if (modeSelect.value === 'instant') {
+        renderInstant();
+      }
+    }
+
+    function renderInstant() {
+      clearTimeout(timer);
+      let chars = parse(input.value);
+      let html = '';
+      chars.forEach(obj => {
+        html += `<span style="color: ${obj.color}">${obj.c}</span>`;
+      });
+      output.innerHTML = html;
+    }
+
+    function playAnim() {
+      clearTimeout(timer);
+      output.innerHTML = '';
+      let chars = parse(input.value);
+      let delay = parseInt(delayInput.value) || 20;
+      let i = 0;
+      
+      function type() {
+        if (i < chars.length) {
+          let span = document.createElement('span');
+          span.style.color = chars[i].color;
+          span.textContent = chars[i].c;
+          output.appendChild(span);
+          i++;
+          timer = setTimeout(type, delay);
+        }
+      }
+      type();
+    }
+
+    input.value = defaultText;
+    updateMode();
+  </script>
+</body>
+</html>
