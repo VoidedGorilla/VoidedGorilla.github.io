@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Boredom Slots</title>
+  <title>Boredom Casino</title>
   <style>
     * { box-sizing: border-box; }
     body { 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
       margin: 0; 
-      background-color: #0f172a; /* Sleek dark slate */
-      color: #f8fafc; 
+      background-color: #121212; 
+      color: #e0e0e0; 
       display: flex; 
       flex-direction: column; 
-      align-items: center;
       height: 100vh;
-      overflow: hidden;
+      height: 100dvh; 
+      overflow: hidden; 
       touch-action: manipulation;
     }
     
@@ -26,30 +26,31 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #1e293b;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      background: #1e1e1e;
+      border-bottom: 1px solid #2a2a2a;
+      z-index: 10;
     }
     .brand { 
-      font-weight: bold; 
+      font-weight: 800; 
       font-size: 1.1rem; 
-      color: #94a3b8; 
+      color: #888888; 
+      letter-spacing: 1px;
     }
     .wallet {
       display: flex;
       align-items: center;
-      background: #0f172a;
+      background: #2a2a2a;
       padding: 6px 6px 6px 16px;
       border-radius: 25px;
-      border: 1px solid #334155;
     }
     .balance-text { 
       font-weight: bold; 
       margin-right: 12px; 
-      color: #10b981; /* Clean green */
+      color: #10b981; 
       font-size: 1.1rem;
     }
     .add-btn {
-      background: #3b82f6; /* Modern blue */
+      background: #3b82f6; 
       border: none;
       color: white;
       width: 32px;
@@ -62,14 +63,38 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s, transform 0.1s;
-    }
-    .add-btn:active { 
-      background: #2563eb; 
-      transform: scale(0.95);
     }
 
-    /* Main Content */
+    /* Global Controls */
+    .global-controls {
+      background: #181818;
+      padding: 15px 20px;
+      border-bottom: 1px solid #2a2a2a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .bet-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bet-label { font-size: 0.9rem; color: #aaaaaa; font-weight: bold; }
+    .bet-input {
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      width: 80px;
+      font-size: 1rem;
+      font-weight: bold;
+      text-align: center;
+      outline: none;
+    }
+    .bet-input:focus { border-color: #3b82f6; }
+
+    /* Main Content Area */
     .main-container {
       flex: 1;
       display: flex;
@@ -78,28 +103,35 @@
       align-items: center;
       width: 100%;
       max-width: 420px;
-      padding: 20px;
+      margin: 0 auto;
+      padding: 15px;
+      position: relative;
     }
-    .cost-info { 
-      margin-bottom: 20px; 
-      color: #94a3b8; 
-      font-size: 0.95rem; 
-      text-transform: uppercase;
-      letter-spacing: 1px;
+
+    /* Game Views */
+    .game-view {
+      display: none; /* Hidden by default */
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
     }
-    
+    .game-view.active {
+      display: flex;
+    }
+
+    /* Slots Styling */
     .slots-box {
       display: flex;
       justify-content: space-between;
       width: 100%;
-      background: #1e293b;
-      padding: 25px 20px;
+      background: #232323;
+      padding: 20px;
       border-radius: 16px;
-      box-shadow: inset 0 4px 12px rgba(0,0,0,0.4);
-      margin-bottom: 30px;
+      border: 1px solid #333333;
+      margin-bottom: 25px;
     }
     .slot {
-      background: #f8fafc;
+      background: #e0e0e0; 
       width: 30%;
       aspect-ratio: 1;
       display: flex;
@@ -107,239 +139,403 @@
       justify-content: center;
       font-size: 3.5rem;
       border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
-      color: #0f172a;
+      box-shadow: inset 0 4px 6px rgba(0,0,0,0.3);
+      color: #121212;
     }
 
-    .spin-btn {
+    /* Dice Styling */
+    .dice-container {
       width: 100%;
-      padding: 18px;
-      background: #ef4444; /* Clean red */
+      background: #232323;
+      padding: 25px 20px;
+      border-radius: 16px;
+      border: 1px solid #333333;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    .dice-result {
+      font-size: 4rem;
+      font-weight: 800;
+      color: #e0e0e0;
+      margin-bottom: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+    .dice-target {
+      font-size: 1.1rem;
+      color: #aaaaaa;
+      margin-bottom: 20px;
+    }
+    .dice-slider {
+      width: 100%;
+      margin-bottom: 15px;
+      accent-color: #10b981;
+    }
+
+    /* Coin Flip Styling */
+    .coin-container {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+    .coin {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #cbd5e1, #64748b);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      font-weight: bold;
+      color: #0f172a;
+      box-shadow: 0 8px 0 #475569, inset 0 4px 10px rgba(255,255,255,0.5);
+      margin-bottom: 30px;
+      transition: transform 0.1s;
+    }
+    .coin-controls {
+      display: flex;
+      gap: 15px;
+      width: 100%;
+    }
+    .coin-btn {
+      flex: 1;
+      padding: 15px;
+      background: #2a2a2a;
+      color: white;
+      border: 2px solid #444;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .coin-btn.selected { border-color: #3b82f6; background: #1e3a8a; }
+
+    /* Action Buttons & Messages */
+    .action-btn {
+      width: 100%;
+      padding: 20px;
+      background: #ef4444; 
       color: white;
       border: none;
       border-radius: 12px;
-      font-size: 1.3rem;
+      font-size: 1.4rem;
       font-weight: 800;
-      letter-spacing: 1.5px;
+      letter-spacing: 2px;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
-      transition: transform 0.1s, background 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 0 #b91c1c; 
     }
-    .spin-btn:active { 
-      transform: translateY(3px); 
-      background: #dc2626; 
-      box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3);
-    }
-    .spin-btn:disabled { 
-      background: #475569; 
-      box-shadow: none; 
-      cursor: not-allowed; 
-      transform: none; 
-    }
+    .action-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #b91c1c; }
+    .action-btn:disabled { background: #444444; box-shadow: 0 4px 0 #222222; color: #777777; }
+    .action-btn.green { background: #10b981; box-shadow: 0 4px 0 #047857; }
+    .action-btn.green:active { box-shadow: 0 0 0 #047857; }
 
     .message {
       height: 24px;
       margin-top: 25px;
       font-weight: 700;
       font-size: 1.1rem;
-      color: #38bdf8;
+      color: #aaaaaa;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      text-align: center;
+      width: 100%;
     }
 
     /* Bottom Bar */
     .bottom-bar {
       width: 100%;
-      max-width: 420px;
-      padding: 20px;
-      padding-bottom: 30px; /* Safe area for mobile navigation */
+      background: #1e1e1e;
+      border-top: 1px solid #2a2a2a;
+      padding: 15px 20px 25px 20px; 
     }
+    .bottom-bar-inner { max-width: 420px; margin: 0 auto; }
     .mode-select {
       width: 100%;
       padding: 16px;
-      background: #1e293b;
-      color: #f8fafc;
-      border: 1px solid #334155;
+      background: #2a2a2a;
+      color: #e0e0e0;
+      border: 1px solid #444444;
       border-radius: 12px;
       font-size: 1rem;
-      font-weight: 500;
+      font-weight: 600;
       outline: none;
       appearance: none;
-      /* Custom dropdown arrow to match dark mode */
-      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+      background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23aaaaaa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
       background-repeat: no-repeat;
       background-position: right 16px top 50%;
       background-size: 12px auto;
-      cursor: pointer;
-    }
-    .mode-select:focus {
-      border-color: #3b82f6;
     }
   </style>
 </head>
 <body>
 
   <div class="top-bar">
-    <div class="brand">BOREDOM SLOTS</div>
+    <div class="brand">BOREDOM CASINO</div>
     <div class="wallet">
-      <span class="balance-text" id="balance">$160</span>
+      <span class="balance-text" id="balance">$160.00</span>
       <button class="add-btn" onclick="setBalance()">+</button>
     </div>
   </div>
 
-  <div class="main-container">
-    <div class="cost-info">Cost per Spin: $10</div>
+  <div class="global-controls">
+    <div class="bet-group">
+      <span class="bet-label">BET AMOUNT:</span>
+      <input type="number" id="betAmount" class="bet-input" value="10" min="1" step="1">
+    </div>
+  </div>
 
-    <div class="slots-box">
-      <div class="slot" id="slot1">🍋</div>
-      <div class="slot" id="slot2">⭐</div>
-      <div class="slot" id="slot3">⭐</div>
+  <div class="main-container">
+    
+    <div id="view-slots" class="game-view active">
+      <div class="slots-box">
+        <div class="slot" id="slot1">🍒</div>
+        <div class="slot" id="slot2">⭐</div>
+        <div class="slot" id="slot3">🍋</div>
+      </div>
+      <button class="action-btn" onclick="playSlots()">SPIN</button>
     </div>
 
-    <button class="spin-btn" id="spinBtn" onclick="spin()">SPIN</button>
-    <div class="message" id="message">READY TO PLAY</div>
+    <div id="view-dice" class="game-view">
+      <div class="dice-container">
+        <div class="dice-result" id="diceResult">00.00</div>
+        <div class="dice-target" id="diceTargetText">Roll UNDER 50.00 to Win (2x)</div>
+        <input type="range" id="diceWinChance" class="dice-slider" min="1" max="95" value="50" oninput="updateDiceUI()">
+        <div style="display:flex; justify-content:space-between; color:#888; font-size:0.9rem;">
+          <span>Win Chance: <span id="diceChanceVal" style="color:white; font-weight:bold;">50%</span></span>
+          <span>Multiplier: <span id="diceMultVal" style="color:white; font-weight:bold;">1.98x</span></span>
+        </div>
+      </div>
+      <button class="action-btn green" onclick="playDice()">ROLL DICE</button>
+    </div>
+
+    <div id="view-coinflip" class="game-view">
+      <div class="coin-container">
+        <div class="coin" id="coinVisual">?</div>
+        <div class="coin-controls">
+          <button class="coin-btn selected" id="btnHeads" onclick="selectCoin('H')">HEADS</button>
+          <button class="coin-btn" id="btnTails" onclick="selectCoin('T')">TAILS</button>
+        </div>
+      </div>
+      <button class="action-btn" onclick="playCoinFlip()">FLIP COIN (2x)</button>
+    </div>
+
+    <div class="message" id="globalMessage">READY TO PLAY</div>
   </div>
 
   <div class="bottom-bar">
-    <select class="mode-select" id="modeSelect" onchange="changeMode()">
-      <option value="classic">Mode: Classic 7s</option>
-      <option value="gens">Mode: OpenGens Spin</option>
-      <option value="cyber">Mode: Cyber Grind</option>
-      <option value="monke">Mode: Primal Monke</option>
-      <option value="geode">Mode: Geode Smash</option>
-    </select>
+    <div class="bottom-bar-inner">
+      <select class="mode-select" id="gameSelect" onchange="switchGame()">
+        <option value="slots">Game: Classic Slots</option>
+        <option value="dice">Game: Crypto Dice</option>
+        <option value="coinflip">Game: Coin Flip</option>
+      </select>
+    </div>
   </div>
 
   <script>
-    let balance = 160;
-    const cost = 10;
+    let balance = 160.00;
     
-    // Different symbol sets for the modes in the dropdown
-    const modeData = {
-      classic: ['🍒', '🍋', '🍉', '⭐', '💎', '7️⃣'],
-      gens:    ['⛏️', '🌲', '🗡️', '🛡️', '🍎', '👑'],
-      cyber:   ['🔫', '🪙', '💀', '🩸', '⚙️', '🔥'],
-      monke:   ['🦍', '🍌', '🌳', '🥥', '🪨', '👑'],
-      geode:   ['⛏️', '🪨', '✨', '💎', '🪙', '🌋']
-    };
-
-    let currentSymbols = modeData.classic;
-
-    const winChart = {
-      '3_match': 100, 
-      '2_match': 20,  
-      'jackpot': 500  
-    };
-
+    // Core Elements
     const balanceEl = document.getElementById('balance');
-    const messageEl = document.getElementById('message');
-    const spinBtn = document.getElementById('spinBtn');
-    const modeSelect = document.getElementById('modeSelect');
-    const slots = [
-      document.getElementById('slot1'), 
-      document.getElementById('slot2'), 
-      document.getElementById('slot3')
-    ];
+    const betInput = document.getElementById('betAmount');
+    const msgEl = document.getElementById('globalMessage');
+    
+    // Helper: Format Currency
+    function updateBalance() {
+      balanceEl.textContent = `$${balance.toFixed(2)}`;
+    }
 
-    // Handle the custom balance + button
+    // Helper: Add Funds
     function setBalance() {
-      const input = prompt("Set your custom balance:", balance);
-      if (input !== null && input.trim() !== "") {
+      const input = prompt("Set custom balance:", balance.toFixed(2));
+      if (input !== null) {
         const parsed = parseFloat(input);
         if (!isNaN(parsed) && parsed >= 0) {
           balance = parsed;
-          updateDisplay();
-          messageEl.textContent = "BALANCE UPDATED";
-          messageEl.style.color = "#10b981";
-          spinBtn.disabled = balance < cost;
-        } else {
-          alert("Please enter a valid number.");
+          updateBalance();
+          setMsg("BALANCE UPDATED", "#10b981");
         }
       }
     }
 
-    function updateDisplay() {
-      balanceEl.textContent = `$${balance}`;
+    // Helper: Set Message
+    function setMsg(text, color = "#aaaaaa") {
+      msgEl.textContent = text;
+      msgEl.style.color = color;
     }
 
-    function changeMode() {
-      const selected = modeSelect.value;
-      currentSymbols = modeData[selected];
+    // Helper: Check Balance before bet
+    function getBet() {
+      const bet = parseFloat(betInput.value);
+      if (isNaN(bet) || bet <= 0) { setMsg("INVALID BET AMOUNT", "#ef4444"); return -1; }
+      if (bet > balance) { setMsg("INSUFFICIENT FUNDS", "#ef4444"); return -1; }
+      return bet;
+    }
+
+    // View Switching Logic
+    function switchGame() {
+      const views = ['slots', 'dice', 'coinflip'];
+      const selected = document.getElementById('gameSelect').value;
       
-      // Update slots to show the new mode's symbols immediately
-      slots.forEach(slot => {
-        slot.textContent = currentSymbols[Math.floor(Math.random() * currentSymbols.length)];
+      views.forEach(v => {
+        document.getElementById(`view-${v}`).classList.remove('active');
       });
-      messageEl.textContent = "MODE CHANGED";
-      messageEl.style.color = "#94a3b8";
+      document.getElementById(`view-${selected}`).classList.add('active');
+      setMsg("GAME CHANGED");
     }
 
-    function spin() {
-      if (balance < cost) {
-        messageEl.textContent = "BROKE! CLICK '+' TO ADD FUNDS";
-        messageEl.style.color = "#ef4444";
-        spinBtn.disabled = true;
-        return;
-      }
+    // ----------------------
+    // GAME 1: SLOTS LOGIC
+    // ----------------------
+    const slotSymbols = ['🍒', '🍋', '🍉', '⭐', '💎', '7️⃣'];
+    const slots = [document.getElementById('slot1'), document.getElementById('slot2'), document.getElementById('slot3')];
+    
+    function playSlots() {
+      const bet = getBet();
+      if (bet === -1) return;
 
-      balance -= cost;
-      updateDisplay();
-      messageEl.textContent = "SPINNING...";
-      messageEl.style.color = "#eab308"; // Yellow
-      spinBtn.disabled = true;
+      balance -= bet;
+      updateBalance();
+      setMsg("SPINNING...", "#eab308");
 
       let spins = 0;
       const spinInterval = setInterval(() => {
-        slots.forEach(slot => {
-          slot.textContent = currentSymbols[Math.floor(Math.random() * currentSymbols.length)];
-        });
+        slots.forEach(slot => { slot.textContent = slotSymbols[Math.floor(Math.random() * slotSymbols.length)]; });
         spins++;
-        
         if (spins >= 15) {
           clearInterval(spinInterval);
-          checkWin();
-          if (balance >= cost) spinBtn.disabled = false;
+          evalSlots(bet);
         }
-      }, 70); // Slightly faster spin animation
+      }, 70);
     }
 
-    function checkWin() {
+    function evalSlots(bet) {
       const s1 = slots[0].textContent;
       const s2 = slots[1].textContent;
       const s3 = slots[2].textContent;
 
-      let won = 0;
-
       if (s1 === s2 && s2 === s3) {
-        // Checking for the "Jackpot" symbol in the current mode (the last item in the array)
-        if (s1 === currentSymbols[currentSymbols.length - 1]) {
-          won = winChart.jackpot;
-          messageEl.textContent = `MEGA JACKPOT! +$${won}`;
-          messageEl.style.color = "#10b981";
-        } else {
-          won = winChart['3_match'];
-          messageEl.textContent = `TRIPLE! +$${won}`;
-          messageEl.style.color = "#10b981";
-        }
+        const mult = (s1 === '7️⃣') ? 50 : 10;
+        const win = bet * mult;
+        balance += win;
+        setMsg(`JACKPOT! +$${win.toFixed(2)}`, "#10b981");
       } else if (s1 === s2 || s2 === s3 || s1 === s3) {
-        won = winChart['2_match'];
-        messageEl.textContent = `PAIR! +$${won}`;
-        messageEl.style.color = "#38bdf8";
+        const win = bet * 2;
+        balance += win;
+        setMsg(`PAIR! +$${win.toFixed(2)}`, "#38bdf8");
       } else {
-        messageEl.textContent = "NOTHING. TRY AGAIN.";
-        messageEl.style.color = "#94a3b8";
+        setMsg("NOTHING. TRY AGAIN.", "#aaaaaa");
       }
+      updateBalance();
+    }
 
-      balance += won;
-      updateDisplay();
+    // ----------------------
+    // GAME 2: DICE LOGIC
+    // ----------------------
+    const diceSlider = document.getElementById('diceWinChance');
+    const diceChanceVal = document.getElementById('diceChanceVal');
+    const diceMultVal = document.getElementById('diceMultVal');
+    const diceTargetText = document.getElementById('diceTargetText');
+    const diceResult = document.getElementById('diceResult');
+    const houseEdge = 0.99; // 1% house edge
+
+    function updateDiceUI() {
+      const chance = parseFloat(diceSlider.value);
+      const mult = (100 / chance) * houseEdge;
       
-      if (balance < cost) {
-         spinBtn.disabled = true;
-         messageEl.textContent = "BANKRUPT! CLICK '+' TO ADD FUNDS";
-         messageEl.style.color = "#ef4444";
+      diceChanceVal.textContent = `${chance}%`;
+      diceMultVal.textContent = `${mult.toFixed(2)}x`;
+      diceTargetText.textContent = `Roll UNDER ${chance.toFixed(2)} to Win`;
+    }
+
+    function playDice() {
+      const bet = getBet();
+      if (bet === -1) return;
+
+      const target = parseFloat(diceSlider.value);
+      const mult = (100 / target) * houseEdge;
+      
+      balance -= bet;
+      updateBalance();
+      
+      // Roll effect
+      let count = 0;
+      const rollInterval = setInterval(() => {
+        diceResult.textContent = (Math.random() * 100).toFixed(2);
+        count++;
+        if (count >= 10) {
+          clearInterval(rollInterval);
+          const finalRoll = (Math.random() * 100).toFixed(2);
+          diceResult.textContent = finalRoll;
+          
+          if (parseFloat(finalRoll) < target) {
+            const win = bet * mult;
+            balance += win;
+            diceResult.style.color = "#10b981";
+            setMsg(`YOU WON $${win.toFixed(2)}!`, "#10b981");
+          } else {
+            diceResult.style.color = "#ef4444";
+            setMsg("YOU LOST.", "#ef4444");
+          }
+          updateBalance();
+          
+          // Reset color after a moment
+          setTimeout(() => { diceResult.style.color = "#e0e0e0"; }, 1500);
+        }
+      }, 50);
+    }
+
+    // ----------------------
+    // GAME 3: COIN FLIP LOGIC
+    // ----------------------
+    let selectedSide = 'H';
+    const coinVisual = document.getElementById('coinVisual');
+    const btnHeads = document.getElementById('btnHeads');
+    const btnTails = document.getElementById('btnTails');
+
+    function selectCoin(side) {
+      selectedSide = side;
+      if (side === 'H') {
+        btnHeads.classList.add('selected');
+        btnTails.classList.remove('selected');
+      } else {
+        btnTails.classList.add('selected');
+        btnHeads.classList.remove('selected');
       }
     }
-  </script>
 
+    function playCoinFlip() {
+      const bet = getBet();
+      if (bet === -1) return;
+
+      balance -= bet;
+      updateBalance();
+      setMsg("FLIPPING...", "#eab308");
+      
+      coinVisual.textContent = "?";
+      coinVisual.style.transform = "scale(1.1)";
+
+      setTimeout(() => {
+        const result = Math.random() < 0.5 ? 'H' : 'T';
+        coinVisual.style.transform = "scale(1)";
+        coinVisual.textContent = result;
+
+        if (result === selectedSide) {
+          const win = bet * 2;
+          balance += win;
+          setMsg(`IT'S ${result === 'H' ? 'HEADS' : 'TAILS'}! +$${win.toFixed(2)}`, "#10b981");
+        } else {
+          setMsg(`IT'S ${result === 'H' ? 'HEADS' : 'TAILS'}. YOU LOSE.`, "#ef4444");
+        }
+        updateBalance();
+      }, 600);
+    }
+
+    // Init UI
+    updateBalance();
+    updateDiceUI();
+  </script>
 </body>
 </html>
