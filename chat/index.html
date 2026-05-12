@@ -26,7 +26,6 @@
     #video-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 50; border-radius: 10px; overflow: hidden; }
     #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
     
-    /* Mirrored local video */
     #localVideo { width: 30%; position: absolute; bottom: 90px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; transform: scaleX(-1); cursor: pointer; transition: 0.3s; }
     
     /* Call Controls Bar */
@@ -160,19 +159,24 @@
     let localStream = null;
     let remoteStream = null;
 
-    // Call state variables
     let isMicOff = false;
     let isCamOff = false;
     let isDeafened = false;
     let isLocalPreviewHidden = false;
 
-    const savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
-    document.getElementById('main-body').className = savedTheme;
-    document.getElementById('theme-selector').value = savedTheme;
+    // Safety net for private browsing on iOS 12
+    let savedTheme = 'theme-dark';
+    try {
+      savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
+      document.getElementById('main-body').className = savedTheme;
+      document.getElementById('theme-selector').value = savedTheme;
+    } catch(e) {
+      document.getElementById('main-body').className = 'theme-dark';
+    }
 
     function changeTheme(val) {
       document.getElementById('main-body').className = val;
-      localStorage.setItem('user-theme', val);
+      try { localStorage.setItem('user-theme', val); } catch(e) {}
     }
 
     function checkPassword() {
@@ -204,11 +208,11 @@
         Notification.requestPermission();
       }
 
-      window.addEventListener("focus", () => db.ref("status/" + currentUser).set(Date.now()));
-      setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 10000);
+      window.addEventListener("focus", function() { db.ref("status/" + currentUser).set(Date.now()); });
+      setInterval(function() { db.ref("status/" + currentUser).set(Date.now()); }, 10000);
       setInterval(updateSeenIndicator, 30000);
 
-      db.ref("status").on("value", (snap) => {
+      db.ref("status").on("value", function(snap) {
         otherUserLastActive = snap.val() ? (snap.val()[otherUser] || 0) : 0;
         updateLastSeenText(otherUserLastActive);
         updateSeenIndicator();
@@ -248,8 +252,8 @@
           if (diffSeconds < 60) { seenSpan.innerText = "Seen just now"; } 
           else {
             const mins = Math.floor(diffSeconds / 60);
-            if (mins >= 60) { seenSpan.innerText = `Seen ${Math.floor(mins / 60)}h ago`; } 
-            else { seenSpan.innerText = `Seen ${mins}m ago`; }
+            if (mins >= 60) { seenSpan.innerText = "Seen " + Math.floor(mins / 60) + "h ago"; } 
+            else { seenSpan.innerText = "Seen " + mins + "m ago"; }
           }
         } else { seenSpan.innerText = "Delivered"; }
         box.appendChild(seenSpan);
@@ -260,13 +264,13 @@
       let typingTimeout;
       const inputField = document.getElementById("msgInput");
       
-      inputField.addEventListener("input", () => {
+      inputField.addEventListener("input", function() {
         db.ref("typing/" + currentUser).set(inputField.value);
         clearTimeout(typingTimeout);
-        typingTimeout = setTimeout(() => { db.ref("typing/" + currentUser).set(""); }, 3000);
+        typingTimeout = setTimeout(function() { db.ref("typing/" + currentUser).set(""); }, 3000);
       });
 
-      db.ref("typing/" + otherUser).on("value", (snap) => {
+      db.ref("typing/" + otherUser).on("value", function(snap) {
         const typedText = snap.val() || "";
         if(typedText.length > 0) {
           document.getElementById("typing-indicator").style.display = "block";
@@ -287,7 +291,7 @@
       const box = document.getElementById("chat-box");
       box.innerHTML = ""; 
       
-      db.ref("messages").limitToLast(50).on("child_added", (snap) => {
+      db.ref("messages").limitToLast(50).on("child_added", function(snap) {
         const key = snap.key;
         const data = snap.val();
         
@@ -313,18 +317,18 @@
         
         const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '&quot;') : "";
         
-        let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                      <span style="font-size:0.6em; opacity:0.6;">${data.user}</span>
-                      <button style="background:none; border:none; color:inherit; opacity:0.6; font-size:1.3em; cursor:pointer; padding: 0 5px;" onclick="openMenu('${key}', '${safeText}', '${data.user}')">⋮</button>
-                    </div>`;
+        let html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">' +
+                      '<span style="font-size:0.6em; opacity:0.6;">' + data.user + '</span>' +
+                      '<button style="background:none; border:none; color:inherit; opacity:0.6; font-size:1.3em; cursor:pointer; padding: 0 5px;" onclick="openMenu(\'' + key + '\', \'' + safeText + '\', \'' + data.user + '\')">⋮</button>' +
+                    '</div>';
                     
-        if (data.text) html += `<span>${data.text}</span>`;
+        if (data.text) html += '<span>' + data.text + '</span>';
         if (data.image) {
           const blurCSS = data.blurred ? "-webkit-filter: blur(20px); filter: blur(20px);" : "";
-          html += `<img src="${data.image}" style="width:100%; border-radius:10px; margin-top:5px; transition: 0.3s; cursor: pointer; ${blurCSS}" onclick="this.style.filter = (this.style.filter === 'none' || this.style.filter === '') ? 'blur(20px)' : 'none'; this.style.webkitFilter = this.style.filter;">`;
-          html += `<br><button class="btn" style="font-size:0.6em; margin-top:8px; padding:5px; background:rgba(0,0,0,0.3); color:white; width:100%;" onclick="saveImg('${data.image}')">OPEN & SAVE</button>`;
+          html += '<img src="' + data.image + '" style="width:100%; border-radius:10px; margin-top:5px; transition: 0.3s; cursor: pointer; ' + blurCSS + '" onclick="this.style.filter = (this.style.filter === \'none\' || this.style.filter === \'\') ? \'blur(20px)\' : \'none\'; this.style.webkitFilter = this.style.filter;">';
+          html += '<br><button class="btn" style="font-size:0.6em; margin-top:8px; padding:5px; background:rgba(0,0,0,0.3); color:white; width:100%;" onclick="saveImg(\'' + data.image + '\')">OPEN & SAVE</button>';
         }
-        if (data.audio) { html += `<audio controls src="${data.audio}" style="width:100%; margin-top: 5px; height: 35px;"></audio>`; }
+        if (data.audio) { html += '<audio controls src="' + data.audio + '" style="width:100%; margin-top: 5px; height: 35px;"></audio>'; }
         
         div.innerHTML = html;
         box.appendChild(div);
@@ -334,13 +338,13 @@
         box.scrollTop = box.scrollHeight;
       });
 
-      db.ref("messages").on("child_removed", (snap) => {
+      db.ref("messages").on("child_removed", function(snap) {
         const el = document.getElementById("msg-" + snap.key);
         if (el) el.remove();
         updateSeenIndicator();
       });
 
-      db.ref("messages").on("child_changed", (snap) => {
+      db.ref("messages").on("child_changed", function(snap) {
         const data = snap.val();
         if (data.deletedFor && data.deletedFor[currentUser]) {
           const el = document.getElementById("msg-" + snap.key);
@@ -379,7 +383,7 @@
       const file = document.getElementById("cameraInput").files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => { pendingImg = e.target.result; document.getElementById("img-preview").src = pendingImg; document.getElementById("preview-modal").style.display = "flex"; };
+        reader.onload = function(e) { pendingImg = e.target.result; document.getElementById("img-preview").src = pendingImg; document.getElementById("preview-modal").style.display = "flex"; };
         reader.readAsDataURL(file);
       }
     }
@@ -395,7 +399,7 @@
       const file = document.getElementById("audioInput").files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => { pendingAudio = e.target.result; document.getElementById("audio-preview").src = pendingAudio; document.getElementById("audio-modal").style.display = "flex"; };
+        reader.onload = function(e) { pendingAudio = e.target.result; document.getElementById("audio-preview").src = pendingAudio; document.getElementById("audio-modal").style.display = "flex"; };
         reader.readAsDataURL(file);
       }
     }
@@ -467,9 +471,9 @@
 
     async function createPeerConnection(callDoc) {
       pc = new RTCPeerConnection(servers);
-      localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      pc.ontrack = event => { event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track)); };
-      pc.onicecandidate = event => {
+      localStream.getTracks().forEach(function(track) { pc.addTrack(track, localStream); });
+      pc.ontrack = function(event) { event.streams[0].getTracks().forEach(function(track) { remoteStream.addTrack(track); }); };
+      pc.onicecandidate = function(event) {
         if (event.candidate) {
           const collection = (callDoc.key === 'call' && pc.localDescription.type === 'offer') ? 'offerCandidates' : 'answerCandidates';
           callDoc.child(collection).push(event.candidate.toJSON());
@@ -485,20 +489,21 @@
       await pc.setLocalDescription(offerDescription);
       await callDoc.set({ offer: { sdp: offerDescription.sdp, type: offerDescription.type }, caller: currentUser });
 
-      callDoc.on('value', snapshot => {
+      callDoc.on('value', function(snapshot) {
         const data = snapshot.val();
-        if (!pc.currentRemoteDescription && data?.answer) {
+        // REMOVED OPTIONAL CHAINING HERE
+        if (!pc.currentRemoteDescription && data && data.answer) {
           pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         }
       });
 
-      callDoc.child('answerCandidates').on('child_added', snapshot => {
+      callDoc.child('answerCandidates').on('child_added', function(snapshot) {
         pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
       });
     }
 
     function listenForCalls() {
-      db.ref('call').on('value', snapshot => {
+      db.ref('call').on('value', function(snapshot) {
         const data = snapshot.val();
         if (data && data.offer && data.caller !== currentUser && !pc) {
           document.getElementById("incoming-modal").style.display = "flex";
@@ -520,7 +525,7 @@
       await pc.setLocalDescription(answerDescription);
       await callDoc.update({ answer: { sdp: answerDescription.sdp, type: answerDescription.type } });
 
-      callDoc.child('offerCandidates').on('child_added', snapshot => {
+      callDoc.child('offerCandidates').on('child_added', function(snapshot) {
         pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
       });
     }
@@ -529,7 +534,7 @@
       document.getElementById("incoming-modal").style.display = "none";
       document.getElementById("video-container").style.display = "none";
       if (pc) { pc.close(); pc = null; }
-      if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+      if (localStream) { localStream.getTracks().forEach(function(track) { track.stop(); }); localStream = null; }
       if (triggerDelete) db.ref('call').remove();
     }
   </script>
