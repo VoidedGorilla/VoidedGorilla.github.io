@@ -4,40 +4,59 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>Burner Chat</title>
-    
+    <title>Burner Pro</title>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        body { font-family: sans-serif; transition: 0.3s; margin: 0; padding: 20px; overflow: hidden; }
+        .btn { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
+        .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; position: relative; }
+        #chat-box { height: 60vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); }
+        /* Theme Classes */
+        .theme-dark { background: #121212; color: white; }
+        .theme-matrix { background: #001a00; color: #00ff00; }
+        .theme-vapor { background: #2b0031; color: #ff00ff; }
+    </style>
 </head>
-<body style="font-family: sans-serif; padding: 20px; background: #121212; color: white;">
+<body class="theme-dark" id="main-body">
 
-    <div id="login-screen" style="text-align: center; margin-top: 50px;">
-        <h2>Burner Access</h2>
-        <input type="password" id="passInput" placeholder="Password..." style="padding: 12px; width: 80%; border-radius: 8px; border: none;">
-        <br>
-        <button onclick="checkPassword()" style="padding: 12px 30px; margin-top: 20px; background: #007bff; color: white; border: none; border-radius: 8px;">Login</button>
-        <p id="error-msg" style="color: #ff4444; display: none; margin-top: 10px;">Access Denied.</p>
+    <div id="login-screen" style="text-align: center; margin-top: 20%;">
+        <h1>Burner Pro</h1>
+        <input type="password" id="passInput" placeholder="Code..." style="padding: 15px; width: 70%; border-radius: 10px; border: none;">
+        <br><br>
+        <button class="btn" onclick="checkPassword()" style="background: #555; color: white; width: 50%;">Login</button>
     </div>
 
     <div id="chat-screen" style="display: none;">
-        <h3 id="user-greeting" style="color: #888; font-size: 0.9em;"></h3>
-        
-        <div id="chat-box" style="height: 65vh; border: 1px solid #333; overflow-y: scroll; margin-bottom: 15px; padding: 10px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column;">
-            </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div id="status-indicator" style="font-size: 0.7em; color: #888;">Checking status...</div>
+            <select onchange="changeTheme(this.value)" id="theme-selector" style="background: #333; color: white; border: none; border-radius: 5px;">
+                <option value="theme-dark">Dark</option>
+                <option value="theme-matrix">Matrix</option>
+                <option value="theme-vapor">Vapor</option>
+            </select>
+        </div>
 
-        <div style="display: flex; gap: 8px; align-items: center;">
-            <label style="background: #333; color: white; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 1.2em;">
-                📷
-                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="sendImage()">
-            </label>
+        <div id="chat-box"></div>
 
-            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1; padding: 12px; border-radius: 10px; border: none; background: #333; color: white;">
-            <button onclick="sendText()" style="background: #28a745; color: white; padding: 12px 20px; border-radius: 10px; border: none; font-weight: bold;">Send</button>
+        <div style="display: flex; gap: 5px; margin-top: 10px;">
+            <label class="btn" style="background: #333;">📷<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewImage()"></label>
+            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1; padding: 10px; border-radius: 8px; border: none;">
+            <button class="btn" onclick="sendText()" style="background: #28a745; color: white;">Send</button>
+        </div>
+
+        <button id="nuke-btn" class="btn" onclick="nukeChat()" style="display: none; background: #dc3545; color: white; width: 100%; margin-top: 15px; font-size: 0.7em;">☢️ NUKE HISTORY</button>
+    </div>
+
+    <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
+        <img id="img-preview" style="max-width: 90%; max-height: 70%; border-radius: 10px;">
+        <div style="margin-top: 20px; display: flex; gap: 20px;">
+            <button class="btn" onclick="closePreview()" style="background: #444; color: white;">Cancel</button>
+            <button class="btn" onclick="confirmSend()" style="background: #28a745; color: white;">SEND</button>
         </div>
     </div>
 
     <script>
-        // --- YOUR UNIQUE CONFIG ---
         const firebaseConfig = {
             apiKey: "AIzaSyDgxMY0dD5hkDIIUwt4oDxPrdh2SR22TkI",
             authDomain: "burnerchat-98742.firebaseapp.com",
@@ -45,74 +64,112 @@
             storageBucket: "burnerchat-98742.firebasestorage.app",
             messagingSenderId: "314160961753",
             appId: "1:314160961753:web:401561874e03d7014cc6c8",
-            // This URL is usually your projectId + -default-rtdb.firebaseio.com
             databaseURL: "https://burnerchat-98742-default-rtdb.firebaseio.com/"
         };
 
-        // Initialize Firebase Compat
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-
         let currentUser = "";
+        let pendingImg = null;
+
+        // Apply saved theme immediately
+        const savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
+        document.getElementById('main-body').className = savedTheme;
+        document.getElementById('theme-selector').value = savedTheme;
+
+        function changeTheme(val) {
+            document.getElementById('main-body').className = val;
+            localStorage.setItem('user-theme', val);
+        }
 
         function checkPassword() {
             const pass = document.getElementById("passInput").value;
-            if (pass === "burner123") { currentUser = "Friend"; unlockChat(); } 
-            else if (pass === "voided") { currentUser = "Me"; unlockChat(); } 
-            else { document.getElementById("error-msg").style.display = "block"; }
+            if (pass === "burner123") { currentUser = "Friend"; setup(); }
+            else if (pass === "voided") { currentUser = "Me"; setup(); }
         }
 
-        function unlockChat() {
+        function setup() {
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("chat-screen").style.display = "block";
-            document.getElementById("user-greeting").innerText = "Channel: " + currentUser;
+            if (currentUser === "Me") document.getElementById("nuke-btn").style.display = "block";
+            
+            // Read Receipts / Status Logic
+            setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 5000);
+            db.ref("status").on("value", (snap) => {
+                const other = (currentUser === "Me") ? "Friend" : "Me";
+                const lastSeen = snap.val() ? snap.val()[other] : 0;
+                const isOnline = (Date.now() - lastSeen < 15000);
+                document.getElementById("status-indicator").innerText = other + (isOnline ? " is Active" : " is Offline");
+            });
+
             loadMessages();
         }
 
         function loadMessages() {
-            db.ref("messages").limitToLast(50).on("child_added", function(snapshot) {
-                const data = snapshot.val();
-                const chatBox = document.getElementById("chat-box");
-                const msgDiv = document.createElement("div");
-                
-                // Styling bubbles
+            db.ref("messages").on("child_added", (snap) => {
+                const data = snap.val();
+                const box = document.getElementById("chat-box");
+                const div = document.createElement("div");
                 const isMe = (data.user === currentUser);
-                msgDiv.style.alignSelf = isMe ? "flex-end" : "flex-start";
-                msgDiv.style.background = isMe ? "#007bff" : "#444";
-                msgDiv.style.padding = "8px 12px";
-                msgDiv.style.borderRadius = "15px";
-                msgDiv.style.marginBottom = "8px";
-                msgDiv.style.maxWidth = "80%";
                 
-                let content = `<span style="font-size: 0.7em; display: block; opacity: 0.6;">${data.user}</span>`;
-                if (data.text) {
-                    content += `<span>${data.text}</span>`;
-                } else if (data.image) {
-                    content += `<img src="${data.image}" style="max-width: 100%; border-radius: 10px; margin-top: 5px;">`;
+                div.className = "bubble";
+                div.style.alignSelf = isMe ? "flex-end" : "flex-start";
+                div.style.background = isMe ? "#007bff" : "#444";
+                div.style.color = "white";
+
+                let html = `<span style="font-size:0.6em; opacity:0.5;">${data.user}</span><br>`;
+                if (data.text) html += `<span>${data.text}</span>`;
+                if (data.image) {
+                    html += `<img src="${data.image}" style="width:100%; border-radius:10px; margin-top:5px;">`;
+                    // SAVE BUTTON
+                    html += `<br><button class="btn" style="font-size:0.5em; margin-top:5px; background:rgba(0,0,0,0.3); color:white;" onclick="saveImg('${data.image}')">DOWNLOAD</button>`;
                 }
-                
-                msgDiv.innerHTML = content;
-                chatBox.appendChild(msgDiv);
-                chatBox.scrollTop = chatBox.scrollHeight;
+                div.innerHTML = html;
+                box.appendChild(div);
+                box.scrollTop = box.scrollHeight;
             });
         }
 
+        function saveImg(dataUrl) {
+            const win = window.open();
+            win.document.write('<iframe src="' + dataUrl + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
+            win.document.title = "Long press to save photo";
+        }
+
         function sendText() {
-            const text = document.getElementById("msgInput").value;
-            if (text) {
-                db.ref("messages").push({ user: currentUser, text: text, timestamp: Date.now() });
+            const val = document.getElementById("msgInput").value;
+            if (val) {
+                db.ref("messages").push({ user: currentUser, text: val, timestamp: Date.now() });
                 document.getElementById("msgInput").value = "";
             }
         }
 
-        function sendImage() {
+        function previewImage() {
             const file = document.getElementById("cameraInput").files[0];
             if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    db.ref("messages").push({ user: currentUser, image: e.target.result, timestamp: Date.now() });
+                reader.onload = (e) => {
+                    pendingImg = e.target.result;
+                    document.getElementById("img-preview").src = pendingImg;
+                    document.getElementById("preview-modal").style.display = "flex";
                 };
                 reader.readAsDataURL(file);
+            }
+        }
+
+        function closePreview() { document.getElementById("preview-modal").style.display = "none"; }
+
+        function confirmSend() {
+            if (pendingImg) {
+                db.ref("messages").push({ user: currentUser, image: pendingImg, timestamp: Date.now() });
+                closePreview();
+            }
+        }
+
+        function nukeChat() {
+            if (confirm("Clear all evidence? This cannot be undone.")) {
+                db.ref("messages").remove();
+                location.reload();
             }
         }
     </script>
