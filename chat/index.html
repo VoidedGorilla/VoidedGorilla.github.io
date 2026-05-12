@@ -11,7 +11,7 @@
         body { font-family: sans-serif; transition: 0.3s; margin: 0; padding: 15px; overflow: hidden; height: 100vh; }
         .btn { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
         .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; }
-        #chat-box { height: 62vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); }
+        #chat-box { height: 60vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); position: relative; }
         
         /* THEMES */
         .theme-dark { background: #121212; color: #eee; }
@@ -20,6 +20,19 @@
         .theme-red { background: #2e0000; color: #ff4d4d; }
 
         input { background: #333; color: white; border: none; border-radius: 8px; padding: 10px; }
+
+        /* iOS 12 Flexbox Fallbacks */
+        #chat-screen > div:first-child select { margin-left: 8px; }
+        #chat-screen > div:nth-child(4) input { margin-left: 8px; margin-right: 8px; }
+        #preview-modal div button:first-child { margin-right: 20px; }
+
+        /* Video Call UI */
+        #video-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 50; border-radius: 10px; overflow: hidden; }
+        #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
+        #localVideo { width: 30%; position: absolute; bottom: 10px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; }
+        #hangup-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #dc3545; color: white; padding: 15px 30px; border-radius: 30px; z-index: 51; }
+        
+        .typing-text { font-size: 0.75em; opacity: 0.7; font-style: italic; margin-top: 5px; display: none; }
     </style>
 </head>
 <body class="theme-dark" id="main-body">
@@ -34,9 +47,9 @@
     <div id="chat-screen" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div id="status-indicator" style="font-size: 0.75em; opacity: 0.7;">Locating...</div>
-            <div style="display: flex; gap: 8px;">
-                <button class="btn" onclick="location.reload()" style="background: #333; padding: 5px 10px;">🔄</button>
-                <select onchange="changeTheme(this.value)" id="theme-selector" style="background: #333; color: white; border: none; border-radius: 5px; font-size: 0.8em;">
+            <div style="display: flex; align-items: center;">
+                <button class="btn" onclick="startCall()" style="background: #28a745; color: white; padding: 5px 15px; margin-right: 8px;">📞 CALL</button>
+                <select onchange="changeTheme(this.value)" id="theme-selector" style="background: #333; color: white; border: none; border-radius: 5px; font-size: 0.8em; padding: 5px;">
                     <option value="theme-dark">Dark</option>
                     <option value="theme-red">Red</option>
                     <option value="theme-matrix">Matrix</option>
@@ -45,13 +58,23 @@
             </div>
         </div>
 
-        <div id="chat-box"></div>
+        <div style="position: relative;">
+            <div id="chat-box"></div>
+            
+            <div id="video-container">
+                <video id="remoteVideo" autoplay playsinline></video>
+                <video id="localVideo" autoplay muted playsinline></video>
+                <button id="hangup-btn" class="btn" onclick="endCall(true)">HANG UP</button>
+            </div>
+        </div>
 
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-            <label class="btn" style="background: #333; display: flex; align-items: center; justify-content: center; width: 40px;">
+        <div id="typing-indicator" class="typing-text">Someone is typing...</div>
+
+        <div style="display: flex; margin-top: 10px;">
+            <label class="btn" style="background: #333; display: flex; align-items: center; justify-content: center; width: 40px; margin-right: 8px;">
                 📷<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewImage()">
             </label>
-            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1;">
+            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1; margin-right: 8px;">
             <button class="btn" onclick="sendText()" style="background: #007bff; color: white; padding: 0 20px;">SEND</button>
         </div>
 
@@ -61,9 +84,17 @@
     <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
         <h3 style="color: white;">Confirm Image?</h3>
         <img id="img-preview" style="max-width: 85%; max-height: 60%; border-radius: 10px; border: 2px solid white;">
-        <div style="margin-top: 25px; display: flex; gap: 20px;">
-            <button class="btn" onclick="closePreview()" style="background: #555; color: white; padding: 15px 25px;">CANCEL</button>
+        <div style="margin-top: 25px; display: flex;">
+            <button class="btn" onclick="closePreview()" style="background: #555; color: white; padding: 15px 25px; margin-right: 20px;">CANCEL</button>
             <button class="btn" onclick="confirmSend()" style="background: #28a745; color: white; padding: 15px 30px;">SEND</button>
+        </div>
+    </div>
+
+    <div id="incoming-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
+        <h2 style="color: white; margin-bottom: 30px;">Incoming Call...</h2>
+        <div style="display: flex;">
+            <button class="btn" onclick="endCall(true)" style="background: #dc3545; color: white; padding: 15px 30px; margin-right: 20px; border-radius: 30px;">DECLINE</button>
+            <button class="btn" onclick="answerCall()" style="background: #28a745; color: white; padding: 15px 30px; border-radius: 30px;">ANSWER</button>
         </div>
     </div>
 
@@ -81,7 +112,14 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let currentUser = "";
+        let otherUser = "";
         let pendingImg = null;
+
+        // WebRTC Variables
+        const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
+        let pc = null;
+        let localStream = null;
+        let remoteStream = null;
 
         const savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
         document.getElementById('main-body').className = savedTheme;
@@ -94,12 +132,13 @@
 
         function checkPassword() {
             const pass = btoa(document.getElementById("passInput").value);
-            
             if (pass === "Y2VtaXlhaA==") { 
                 currentUser = "Cemiyah"; 
+                otherUser = "Voided";
                 setup(); 
             } else if (pass === "dm9pZGVk") { 
                 currentUser = "Voided"; 
+                otherUser = "Cemiyah";
                 setup(); 
             } else {
                 alert("Access Denied");
@@ -111,31 +150,55 @@
             document.getElementById("chat-screen").style.display = "block";
             if (currentUser === "Voided") document.getElementById("nuke-btn").style.display = "block";
             
-            // Heartbeat for "Last Active"
+            // Heartbeat
             setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 10000);
-            
             db.ref("status").on("value", (snap) => {
-                const other = (currentUser === "Voided") ? "Cemiyah" : "Voided";
-                const lastSeen = snap.val() ? snap.val()[other] : 0;
-                updateLastSeenText(other, lastSeen);
+                const lastSeen = snap.val() ? snap.val()[otherUser] : 0;
+                updateLastSeenText(lastSeen);
             });
 
+            setupTypingIndicator();
             loadMessages();
+            listenForCalls();
         }
 
-        function updateLastSeenText(name, timestamp) {
+        function updateLastSeenText(timestamp) {
             const statusEl = document.getElementById("status-indicator");
-            if (!timestamp) { statusEl.innerText = name + ": Unknown"; return; }
-            
+            if (!timestamp) { statusEl.innerText = otherUser + ": Unknown"; return; }
             const diff = Math.floor((Date.now() - timestamp) / 1000);
-            if (diff < 30) statusEl.innerText = name + ": Active Now";
-            else if (diff < 60) statusEl.innerText = name + ": Active " + diff + "s ago";
-            else statusEl.innerText = name + ": Active " + Math.floor(diff/60) + "m ago";
+            if (diff < 30) statusEl.innerText = otherUser + ": Active Now";
+            else if (diff < 60) statusEl.innerText = otherUser + ": Active " + diff + "s ago";
+            else statusEl.innerText = otherUser + ": Active " + Math.floor(diff/60) + "m ago";
         }
 
+        // --- TYPING INDICATOR LOGIC ---
+        function setupTypingIndicator() {
+            let typingTimeout;
+            const inputField = document.getElementById("msgInput");
+            
+            inputField.addEventListener("input", () => {
+                db.ref("typing/" + currentUser).set(true);
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => {
+                    db.ref("typing/" + currentUser).set(false);
+                }, 2000); // Clears after 2 seconds of no typing
+            });
+
+            db.ref("typing/" + otherUser).on("value", (snap) => {
+                const isTyping = snap.val() || false;
+                document.getElementById("typing-indicator").style.display = isTyping ? "block" : "none";
+                document.getElementById("typing-indicator").innerText = otherUser + " is typing...";
+                if(isTyping) {
+                    const box = document.getElementById("chat-box");
+                    box.scrollTop = box.scrollHeight;
+                }
+            });
+        }
+
+        // --- CHAT LOGIC ---
         function loadMessages() {
             const box = document.getElementById("chat-box");
-            box.innerHTML = ""; // Clear for fresh load
+            box.innerHTML = ""; 
             db.ref("messages").limitToLast(50).on("child_added", (snap) => {
                 const data = snap.val();
                 const div = document.createElement("div");
@@ -167,6 +230,7 @@
             if (val) {
                 db.ref("messages").push({ user: currentUser, text: val, timestamp: Date.now() });
                 document.getElementById("msgInput").value = "";
+                db.ref("typing/" + currentUser).set(false); // Stop typing immediately
             }
         }
 
@@ -184,18 +248,119 @@
         }
 
         function closePreview() { document.getElementById("preview-modal").style.display = "none"; }
-
         function confirmSend() {
             if (pendingImg) {
                 db.ref("messages").push({ user: currentUser, image: pendingImg, timestamp: Date.now() });
                 closePreview();
             }
         }
+        function nukeChat() { if (confirm("Delete everything?")) { db.ref("messages").remove(); location.reload(); } }
 
-        function nukeChat() {
-            if (confirm("Delete everything?")) {
-                db.ref("messages").remove();
-                location.reload();
+        // --- WEBRTC VIDEO LOGIC ---
+        async function setupMedia() {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            remoteStream = new MediaStream();
+            document.getElementById("localVideo").srcObject = localStream;
+            document.getElementById("remoteVideo").srcObject = remoteStream;
+            document.getElementById("video-container").style.display = "block";
+        }
+
+        async function createPeerConnection(callDoc) {
+            pc = new RTCPeerConnection(servers);
+            localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+            
+            pc.ontrack = event => {
+                event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
+            };
+
+            pc.onicecandidate = event => {
+                if (event.candidate) {
+                    const collection = (callDoc.key === 'call' && pc.localDescription.type === 'offer') ? 'offerCandidates' : 'answerCandidates';
+                    callDoc.child(collection).push(event.candidate.toJSON());
+                }
+            };
+        }
+
+        async function startCall() {
+            await setupMedia();
+            const callDoc = db.ref('call');
+            await createPeerConnection(callDoc);
+
+            const offerDescription = await pc.createOffer();
+            await pc.setLocalDescription(offerDescription);
+
+            await callDoc.set({ 
+                offer: { sdp: offerDescription.sdp, type: offerDescription.type },
+                caller: currentUser
+            });
+
+            // Listen for Answer
+            callDoc.on('value', snapshot => {
+                const data = snapshot.val();
+                if (!pc.currentRemoteDescription && data?.answer) {
+                    const answerDescription = new RTCSessionDescription(data.answer);
+                    pc.setRemoteDescription(answerDescription);
+                }
+            });
+
+            // Listen for Remote ICE
+            callDoc.child('answerCandidates').on('child_added', snapshot => {
+                const candidate = new RTCIceCandidate(snapshot.val());
+                pc.addIceCandidate(candidate);
+            });
+        }
+
+        function listenForCalls() {
+            db.ref('call').on('value', snapshot => {
+                const data = snapshot.val();
+                // If call data exists, an offer exists, we aren't the caller, and we don't have an active connection
+                if (data && data.offer && data.caller !== currentUser && !pc) {
+                    document.getElementById("incoming-modal").style.display = "flex";
+                }
+                // If call node is deleted remotely, hang up locally
+                if (!data && pc) {
+                    endCall(false);
+                }
+            });
+        }
+
+        async function answerCall() {
+            document.getElementById("incoming-modal").style.display = "none";
+            await setupMedia();
+            const callDoc = db.ref('call');
+            await createPeerConnection(callDoc);
+
+            const callData = (await callDoc.get()).val();
+            const offerDescription = callData.offer;
+            await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
+
+            const answerDescription = await pc.createAnswer();
+            await pc.setLocalDescription(answerDescription);
+
+            await callDoc.update({
+                answer: { sdp: answerDescription.sdp, type: answerDescription.type }
+            });
+
+            callDoc.child('offerCandidates').on('child_added', snapshot => {
+                const candidate = new RTCIceCandidate(snapshot.val());
+                pc.addIceCandidate(candidate);
+            });
+        }
+
+        function endCall(triggerDelete) {
+            document.getElementById("incoming-modal").style.display = "none";
+            document.getElementById("video-container").style.display = "none";
+            
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (triggerDelete) {
+                db.ref('call').remove();
             }
         }
     </script>
