@@ -27,14 +27,18 @@
     
     /* Video UI adjustments */
     #video-container { display: none; height: 100%; position: relative; background: #000; z-index: 50; border-radius: 10px; overflow: hidden; margin-bottom: 10px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.2); transition: 0.3s; }
-    #remoteVideo { width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
-    #localVideo { width: 25%; max-width: 100px; position: absolute; bottom: 10px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; transform: scaleX(-1); cursor: pointer; transition: 0.3s; z-index: 52; }
+    #remoteVideo { width: 100%; height: 100%; object-fit: cover; z-index: 48; position: relative; }
     
-    /* Call Controls Bar */
-    #call-controls { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 40px; z-index: 51; align-items: center; transition: 0.3s; }
-    .ctrl-icon { background: #444; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.1em; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+    /* Invisible glass overlay to perfectly catch clicks for hiding the control bar */
+    #video-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 49; cursor: pointer; }
+    
+    #localVideo { width: 25%; max-width: 100px; position: absolute; bottom: 10px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; transform: scaleX(-1); transition: 0.3s; z-index: 52; }
+    
+    /* Call Controls Bar - UPDATED to flex-wrap so buttons never fall off screen */
+    #call-controls { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; background: rgba(0,0,0,0.6); padding: 8px 12px; border-radius: 20px; z-index: 51; align-items: center; transition: 0.3s; width: 90%; max-width: 400px; }
+    .ctrl-icon { background: #444; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 1.1em; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; flex-shrink: 0; }
     .ctrl-icon.off { background: #dc3545; }
-    #hangup-btn { background: #dc3545; color: white; padding: 0 15px; height: 40px; border-radius: 30px; font-weight: bold; border: none; cursor: pointer; font-size: 0.8em; }
+    #hangup-btn { background: #dc3545; color: white; padding: 0 15px; height: 40px; border-radius: 30px; font-weight: bold; border: none; cursor: pointer; font-size: 0.8em; flex-shrink: 0; }
     
     .typing-text { font-size: 0.75em; opacity: 0.7; font-style: italic; margin-top: 5px; display: none; word-wrap: break-word; }
   </style>
@@ -67,9 +71,13 @@
 
     <div id="chat-container-wrapper">
       <div id="video-container">
-        <!-- Tap remote video to hide/show buttons -->
-        <video id="remoteVideo" autoplay playsinline onclick="toggleControls()"></video>
-        <video id="localVideo" autoplay muted playsinline onclick="toggleLocalPreview()"></video>
+        <!-- Remote Video -->
+        <video id="remoteVideo" autoplay playsinline></video>
+        <!-- Invisible Overlay for Click Detection -->
+        <div id="video-overlay" onclick="toggleControls()"></div>
+        <!-- Local Video -->
+        <video id="localVideo" autoplay muted playsinline></video>
+        <!-- Call Controls -->
         <div id="call-controls">
           <button id="mic-btn" class="ctrl-icon" onclick="toggleMic()">🎤</button>
           <button id="cam-btn" class="ctrl-icon" onclick="toggleCam()">📷</button>
@@ -85,7 +93,7 @@
 
     <div id="typing-indicator" class="typing-text">Someone is typing...</div>
 
-    <!-- Added ID to input area so we can hide it during full screen video -->
+    <!-- Message Input Area -->
     <div id="input-area" style="display: flex; margin-top: 10px; align-items: center;">
       <label class="btn" style="background: #333; display: flex; align-items: center; justify-content: center; width: 40px; margin-right: 5px;">
         📷<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewImage()">
@@ -172,7 +180,7 @@
     let isDeafened = false;
     let isLocalPreviewHidden = false;
     let controlsVisible = true;
-    let isChatVisibleInCall = false; // Tracks if split-screen is active
+    let isChatVisibleInCall = false; 
     let currentFacingMode = "user";
 
     let savedTheme = 'theme-dark';
@@ -454,7 +462,6 @@
       document.getElementById("call-controls").style.display = controlsVisible ? "flex" : "none";
     }
 
-    /* NEW: Chat Toggle Function */
     function toggleChat() {
       isChatVisibleInCall = !isChatVisibleInCall;
       const vidContainer = document.getElementById("video-container");
@@ -474,7 +481,7 @@
         vidContainer.style.height = "100%";
         chatBox.style.display = "none";
         inputArea.style.display = "none";
-        wrapper.style.height = "85vh"; // Extends downwards over the hidden input area
+        wrapper.style.height = "85vh"; 
         chatBtn.classList.remove("off");
       }
     }
@@ -519,7 +526,6 @@
       document.getElementById("localVideo").style.transform = "scaleX(-1)";
       document.getElementById("call-controls").style.display = "flex";
       
-      // Default to full-screen video when a call starts
       isChatVisibleInCall = false;
       if(document.getElementById("chat-btn")) document.getElementById("chat-btn").classList.remove("off");
     }
@@ -536,7 +542,6 @@
         document.getElementById("localVideo").srcObject = localStream;
         document.getElementById("remoteVideo").srcObject = remoteStream;
         
-        // Hide chat and input area, expand wrapper, show video container at 100%
         document.getElementById("chat-container-wrapper").style.height = "85vh";
         document.getElementById("chat-box").style.display = "none";
         document.getElementById("input-area").style.display = "none";
@@ -617,7 +622,6 @@
       document.getElementById("incoming-modal").style.display = "none";
       document.getElementById("video-container").style.display = "none";
       
-      // Restore standard chat layout when call ends
       document.getElementById("chat-container-wrapper").style.height = "70vh";
       document.getElementById("chat-box").style.display = "flex";
       document.getElementById("input-area").style.display = "flex";
