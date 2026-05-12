@@ -8,51 +8,62 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
     <style>
-        body { font-family: sans-serif; transition: 0.3s; margin: 0; padding: 20px; overflow: hidden; }
+        body { font-family: sans-serif; transition: 0.3s; margin: 0; padding: 15px; overflow: hidden; height: 100vh; }
         .btn { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; position: relative; }
-        #chat-box { height: 60vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); }
-        /* Theme Classes */
-        .theme-dark { background: #121212; color: white; }
+        .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; }
+        #chat-box { height: 62vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* THEMES */
+        .theme-dark { background: #121212; color: #eee; }
         .theme-matrix { background: #001a00; color: #00ff00; }
         .theme-vapor { background: #2b0031; color: #ff00ff; }
+        .theme-red { background: #2e0000; color: #ff4d4d; }
+
+        input { background: #333; color: white; border: none; border-radius: 8px; padding: 10px; }
     </style>
 </head>
 <body class="theme-dark" id="main-body">
 
-    <div id="login-screen" style="text-align: center; margin-top: 20%;">
-        <h1>Burner Pro</h1>
-        <input type="password" id="passInput" placeholder="Code..." style="padding: 15px; width: 70%; border-radius: 10px; border: none;">
+    <div id="login-screen" style="text-align: center; margin-top: 30%;">
+        <h1 style="letter-spacing: 2px;">SECURE ACCESS</h1>
+        <input type="password" id="passInput" placeholder="Enter Credentials..." style="width: 70%; text-align: center; font-size: 1.2em;">
         <br><br>
-        <button class="btn" onclick="checkPassword()" style="background: #555; color: white; width: 50%;">Login</button>
+        <button class="btn" onclick="checkPassword()" style="background: #444; color: white; width: 50%; padding: 15px;">LOGIN</button>
     </div>
 
     <div id="chat-screen" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div id="status-indicator" style="font-size: 0.7em; color: #888;">Checking status...</div>
-            <select onchange="changeTheme(this.value)" id="theme-selector" style="background: #333; color: white; border: none; border-radius: 5px;">
-                <option value="theme-dark">Dark</option>
-                <option value="theme-matrix">Matrix</option>
-                <option value="theme-vapor">Vapor</option>
-            </select>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div id="status-indicator" style="font-size: 0.75em; opacity: 0.7;">Locating...</div>
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" onclick="location.reload()" style="background: #333; padding: 5px 10px;">🔄</button>
+                <select onchange="changeTheme(this.value)" id="theme-selector" style="background: #333; color: white; border: none; border-radius: 5px; font-size: 0.8em;">
+                    <option value="theme-dark">Dark</option>
+                    <option value="theme-red">Red</option>
+                    <option value="theme-matrix">Matrix</option>
+                    <option value="theme-vapor">Vapor</option>
+                </select>
+            </div>
         </div>
 
         <div id="chat-box"></div>
 
-        <div style="display: flex; gap: 5px; margin-top: 10px;">
-            <label class="btn" style="background: #333;">📷<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewImage()"></label>
-            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1; padding: 10px; border-radius: 8px; border: none;">
-            <button class="btn" onclick="sendText()" style="background: #28a745; color: white;">Send</button>
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <label class="btn" style="background: #333; display: flex; align-items: center; justify-content: center; width: 40px;">
+                📷<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewImage()">
+            </label>
+            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1;">
+            <button class="btn" onclick="sendText()" style="background: #007bff; color: white; padding: 0 20px;">SEND</button>
         </div>
 
-        <button id="nuke-btn" class="btn" onclick="nukeChat()" style="display: none; background: #dc3545; color: white; width: 100%; margin-top: 15px; font-size: 0.7em;">☢️ NUKE HISTORY</button>
+        <button id="nuke-btn" class="btn" onclick="nukeChat()" style="display: none; background: #900; color: white; width: 100%; margin-top: 15px; font-size: 0.7em; opacity: 0.5;">NUKE DATABASE</button>
     </div>
 
-    <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
-        <img id="img-preview" style="max-width: 90%; max-height: 70%; border-radius: 10px;">
-        <div style="margin-top: 20px; display: flex; gap: 20px;">
-            <button class="btn" onclick="closePreview()" style="background: #444; color: white;">Cancel</button>
-            <button class="btn" onclick="confirmSend()" style="background: #28a745; color: white;">SEND</button>
+    <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
+        <h3 style="color: white;">Confirm Image?</h3>
+        <img id="img-preview" style="max-width: 85%; max-height: 60%; border-radius: 10px; border: 2px solid white;">
+        <div style="margin-top: 25px; display: flex; gap: 20px;">
+            <button class="btn" onclick="closePreview()" style="background: #555; color: white; padding: 15px 25px;">CANCEL</button>
+            <button class="btn" onclick="confirmSend()" style="background: #28a745; color: white; padding: 15px 30px;">SEND</button>
         </div>
     </div>
 
@@ -72,7 +83,6 @@
         let currentUser = "";
         let pendingImg = null;
 
-        // Apply saved theme immediately
         const savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
         document.getElementById('main-body').className = savedTheme;
         document.getElementById('theme-selector').value = savedTheme;
@@ -84,45 +94,53 @@
 
         function checkPassword() {
             const pass = document.getElementById("passInput").value;
-            if (pass === "burner123") { currentUser = "Friend"; setup(); }
-            else if (pass === "voided") { currentUser = "Me"; setup(); }
+            if (pass === "cemiyah") { currentUser = "Cemiyah"; setup(); }
+            else if (pass === "voided") { currentUser = "Voided"; setup(); }
         }
 
         function setup() {
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("chat-screen").style.display = "block";
-            if (currentUser === "Me") document.getElementById("nuke-btn").style.display = "block";
+            if (currentUser === "Voided") document.getElementById("nuke-btn").style.display = "block";
             
-            // Read Receipts / Status Logic
-            setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 5000);
+            // Heartbeat for "Last Active"
+            setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 10000);
+            
             db.ref("status").on("value", (snap) => {
-                const other = (currentUser === "Me") ? "Friend" : "Me";
+                const other = (currentUser === "Voided") ? "Cemiyah" : "Voided";
                 const lastSeen = snap.val() ? snap.val()[other] : 0;
-                const isOnline = (Date.now() - lastSeen < 15000);
-                document.getElementById("status-indicator").innerText = other + (isOnline ? " is Active" : " is Offline");
+                updateLastSeenText(other, lastSeen);
             });
 
             loadMessages();
         }
 
+        function updateLastSeenText(name, timestamp) {
+            const statusEl = document.getElementById("status-indicator");
+            if (!timestamp) { statusEl.innerText = name + ": Unknown"; return; }
+            
+            const diff = Math.floor((Date.now() - timestamp) / 1000);
+            if (diff < 30) statusEl.innerText = name + ": Active Now";
+            else if (diff < 60) statusEl.innerText = name + ": Active " + diff + "s ago";
+            else statusEl.innerText = name + ": Active " + Math.floor(diff/60) + "m ago";
+        }
+
         function loadMessages() {
-            db.ref("messages").on("child_added", (snap) => {
+            const box = document.getElementById("chat-box");
+            box.innerHTML = ""; // Clear for fresh load
+            db.ref("messages").limitToLast(50).on("child_added", (snap) => {
                 const data = snap.val();
-                const box = document.getElementById("chat-box");
                 const div = document.createElement("div");
                 const isMe = (data.user === currentUser);
-                
                 div.className = "bubble";
                 div.style.alignSelf = isMe ? "flex-end" : "flex-start";
                 div.style.background = isMe ? "#007bff" : "#444";
-                div.style.color = "white";
-
-                let html = `<span style="font-size:0.6em; opacity:0.5;">${data.user}</span><br>`;
+                
+                let html = `<span style="font-size:0.6em; opacity:0.6;">${data.user}</span><br>`;
                 if (data.text) html += `<span>${data.text}</span>`;
                 if (data.image) {
                     html += `<img src="${data.image}" style="width:100%; border-radius:10px; margin-top:5px;">`;
-                    // SAVE BUTTON
-                    html += `<br><button class="btn" style="font-size:0.5em; margin-top:5px; background:rgba(0,0,0,0.3); color:white;" onclick="saveImg('${data.image}')">DOWNLOAD</button>`;
+                    html += `<br><button class="btn" style="font-size:0.6em; margin-top:8px; padding:5px; background:rgba(0,0,0,0.3); color:white; width:100%;" onclick="saveImg('${data.image}')">OPEN & SAVE</button>`;
                 }
                 div.innerHTML = html;
                 box.appendChild(div);
@@ -132,8 +150,8 @@
 
         function saveImg(dataUrl) {
             const win = window.open();
-            win.document.write('<iframe src="' + dataUrl + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
-            win.document.title = "Long press to save photo";
+            win.document.write('<img src="' + dataUrl + '" style="width:100%;">');
+            win.document.write('<h2 style="text-align:center;">Long Press to Save</h2>');
         }
 
         function sendText() {
@@ -167,7 +185,7 @@
         }
 
         function nukeChat() {
-            if (confirm("Clear all evidence? This cannot be undone.")) {
+            if (confirm("Delete everything?")) {
                 db.ref("messages").remove();
                 location.reload();
             }
