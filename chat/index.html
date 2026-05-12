@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <title>Burner Chat</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+
+    <div id="login-screen">
+        <h2>Enter Access Code</h2>
+        <input type="password" id="passInput" placeholder="Password...">
+        <button onclick="checkPassword()">Enter</button>
+        <p id="error-msg" style="color: red; display: none;">Wrong password!</p>
+    </div>
+
+    <div id="chat-screen" style="display: none;">
+        <h3 id="user-greeting"></h3>
+        
+        <div id="chat-box" style="height: 300px; border: 1px solid #ccc; overflow-y: scroll; margin-bottom: 10px; padding: 5px;">
+            </div>
+
+        <label style="background: #ddd; padding: 8px 12px; border-radius: 5px; cursor: pointer;">
+            📷 Snap Pic
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleImage()">
+        </label>
+
+        <input type="text" id="msgInput" placeholder="Type a message..." style="width: 60%; padding: 8px;">
+        <button onclick="sendText()" style="padding: 8px;">Send</button>
+    </div>
+
+    <script>
+        let currentUser = "";
+
+        // 1. The Password Gate
+        function checkPassword() {
+            const pass = document.getElementById("passInput").value;
+            
+            if (pass === "burner123") {
+                currentUser = "Friend";
+                unlockChat();
+            } else if (pass === "voided") {
+                currentUser = "Me";
+                unlockChat();
+            } else {
+                document.getElementById("error-msg").style.display = "block";
+            }
+        }
+
+        function unlockChat() {
+            document.getElementById("login-screen").style.display = "none";
+            document.getElementById("chat-screen").style.display = "block";
+            document.getElementById("user-greeting").innerText = "Logged in as: " + currentUser;
+        }
+
+        // 2. Handling the Camera Image
+        function handleImage() {
+            const file = document.getElementById("cameraInput").files[0];
+            if (file) {
+                // Here is where you will send the 'file' to your Firebase/Backend
+                console.log(currentUser + " snapped a picture: " + file.name);
+                alert("Picture taken! Ready to send to database.");
+            }
+        }
+
+        // 3. Handling Text
+        function sendText() {
+            const text = document.getElementById("msgInput").value;
+            if (text) {
+                // Here is where you will send 'text' to your Firebase/Backend
+                console.log(currentUser + ": " + text);
+                document.getElementById("msgInput").value = ""; // clear input
+            }
+        }
+    </script>
+</body>
+</html>
