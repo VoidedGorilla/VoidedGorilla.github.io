@@ -5,72 +5,114 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <title>Burner Chat</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
-<body style="font-family: sans-serif; padding: 20px;">
+<body style="font-family: sans-serif; padding: 20px; background: #121212; color: white;">
 
-    <div id="login-screen">
-        <h2>Enter Access Code</h2>
-        <input type="password" id="passInput" placeholder="Password...">
-        <button onclick="checkPassword()">Enter</button>
-        <p id="error-msg" style="color: red; display: none;">Wrong password!</p>
+    <div id="login-screen" style="text-align: center; margin-top: 50px;">
+        <h2>Burner Access</h2>
+        <input type="password" id="passInput" placeholder="Password..." style="padding: 12px; width: 80%; border-radius: 8px; border: none;">
+        <br>
+        <button onclick="checkPassword()" style="padding: 12px 30px; margin-top: 20px; background: #007bff; color: white; border: none; border-radius: 8px;">Login</button>
+        <p id="error-msg" style="color: #ff4444; display: none; margin-top: 10px;">Access Denied.</p>
     </div>
 
     <div id="chat-screen" style="display: none;">
-        <h3 id="user-greeting"></h3>
+        <h3 id="user-greeting" style="color: #888; font-size: 0.9em;"></h3>
         
-        <div id="chat-box" style="height: 300px; border: 1px solid #ccc; overflow-y: scroll; margin-bottom: 10px; padding: 5px;">
+        <div id="chat-box" style="height: 65vh; border: 1px solid #333; overflow-y: scroll; margin-bottom: 15px; padding: 10px; background: #1a1a1a; border-radius: 10px; display: flex; flex-direction: column;">
             </div>
 
-        <label style="background: #ddd; padding: 8px 12px; border-radius: 5px; cursor: pointer;">
-            📷 Snap Pic
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="handleImage()">
-        </label>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <label style="background: #333; color: white; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 1.2em;">
+                📷
+                <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="sendImage()">
+            </label>
 
-        <input type="text" id="msgInput" placeholder="Type a message..." style="width: 60%; padding: 8px;">
-        <button onclick="sendText()" style="padding: 8px;">Send</button>
+            <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1; padding: 12px; border-radius: 10px; border: none; background: #333; color: white;">
+            <button onclick="sendText()" style="background: #28a745; color: white; padding: 12px 20px; border-radius: 10px; border: none; font-weight: bold;">Send</button>
+        </div>
     </div>
 
     <script>
+        // --- YOUR UNIQUE CONFIG ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgxMY0dD5hkDIIUwt4oDxPrdh2SR22TkI",
+            authDomain: "burnerchat-98742.firebaseapp.com",
+            projectId: "burnerchat-98742",
+            storageBucket: "burnerchat-98742.firebasestorage.app",
+            messagingSenderId: "314160961753",
+            appId: "1:314160961753:web:401561874e03d7014cc6c8",
+            // This URL is usually your projectId + -default-rtdb.firebaseio.com
+            databaseURL: "https://burnerchat-98742-default-rtdb.firebaseio.com/"
+        };
+
+        // Initialize Firebase Compat
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let currentUser = "";
 
-        // 1. The Password Gate
         function checkPassword() {
             const pass = document.getElementById("passInput").value;
-            
-            if (pass === "burner123") {
-                currentUser = "Friend";
-                unlockChat();
-            } else if (pass === "voided") {
-                currentUser = "Me";
-                unlockChat();
-            } else {
-                document.getElementById("error-msg").style.display = "block";
-            }
+            if (pass === "burner123") { currentUser = "Friend"; unlockChat(); } 
+            else if (pass === "voided") { currentUser = "Me"; unlockChat(); } 
+            else { document.getElementById("error-msg").style.display = "block"; }
         }
 
         function unlockChat() {
             document.getElementById("login-screen").style.display = "none";
             document.getElementById("chat-screen").style.display = "block";
-            document.getElementById("user-greeting").innerText = "Logged in as: " + currentUser;
+            document.getElementById("user-greeting").innerText = "Channel: " + currentUser;
+            loadMessages();
         }
 
-        // 2. Handling the Camera Image
-        function handleImage() {
-            const file = document.getElementById("cameraInput").files[0];
-            if (file) {
-                // Here is where you will send the 'file' to your Firebase/Backend
-                console.log(currentUser + " snapped a picture: " + file.name);
-                alert("Picture taken! Ready to send to database.");
-            }
+        function loadMessages() {
+            db.ref("messages").limitToLast(50).on("child_added", function(snapshot) {
+                const data = snapshot.val();
+                const chatBox = document.getElementById("chat-box");
+                const msgDiv = document.createElement("div");
+                
+                // Styling bubbles
+                const isMe = (data.user === currentUser);
+                msgDiv.style.alignSelf = isMe ? "flex-end" : "flex-start";
+                msgDiv.style.background = isMe ? "#007bff" : "#444";
+                msgDiv.style.padding = "8px 12px";
+                msgDiv.style.borderRadius = "15px";
+                msgDiv.style.marginBottom = "8px";
+                msgDiv.style.maxWidth = "80%";
+                
+                let content = `<span style="font-size: 0.7em; display: block; opacity: 0.6;">${data.user}</span>`;
+                if (data.text) {
+                    content += `<span>${data.text}</span>`;
+                } else if (data.image) {
+                    content += `<img src="${data.image}" style="max-width: 100%; border-radius: 10px; margin-top: 5px;">`;
+                }
+                
+                msgDiv.innerHTML = content;
+                chatBox.appendChild(msgDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
         }
 
-        // 3. Handling Text
         function sendText() {
             const text = document.getElementById("msgInput").value;
             if (text) {
-                // Here is where you will send 'text' to your Firebase/Backend
-                console.log(currentUser + ": " + text);
-                document.getElementById("msgInput").value = ""; // clear input
+                db.ref("messages").push({ user: currentUser, text: text, timestamp: Date.now() });
+                document.getElementById("msgInput").value = "";
+            }
+        }
+
+        function sendImage() {
+            const file = document.getElementById("cameraInput").files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    db.ref("messages").push({ user: currentUser, image: e.target.result, timestamp: Date.now() });
+                };
+                reader.readAsDataURL(file);
             }
         }
     </script>
