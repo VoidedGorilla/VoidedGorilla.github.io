@@ -10,7 +10,7 @@
     <style>
         body { font-family: sans-serif; transition: 0.3s; margin: 0; padding: 15px; overflow: hidden; height: 100vh; }
         .btn { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
-        .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; }
+        .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; position: relative; }
         #chat-box { height: 60vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); position: relative; }
         
         /* THEMES */
@@ -19,20 +19,19 @@
         .theme-vapor { background: #2b0031; color: #ff00ff; }
         .theme-red { background: #2e0000; color: #ff4d4d; }
 
-        input { background: #333; color: white; border: none; border-radius: 8px; padding: 10px; }
+        input[type="text"], input[type="password"] { background: #333; color: white; border: none; border-radius: 8px; padding: 10px; }
 
         /* iOS 12 Flexbox Fallbacks */
         #chat-screen > div:first-child select { margin-left: 8px; }
-        #chat-screen > div:nth-child(4) input { margin-left: 8px; margin-right: 8px; }
-        #preview-modal div button:first-child { margin-right: 20px; }
-
-        /* Video Call UI */
+        #chat-screen > div:nth-child(4) input[type="text"] { margin-left: 8px; margin-right: 8px; }
+        
+        /* Video UI */
         #video-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 50; border-radius: 10px; overflow: hidden; }
         #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
         #localVideo { width: 30%; position: absolute; bottom: 10px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; }
         #hangup-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #dc3545; color: white; padding: 15px 30px; border-radius: 30px; z-index: 51; }
         
-        .typing-text { font-size: 0.75em; opacity: 0.7; font-style: italic; margin-top: 5px; display: none; }
+        .typing-text { font-size: 0.75em; opacity: 0.7; font-style: italic; margin-top: 5px; display: none; word-wrap: break-word; }
     </style>
 </head>
 <body class="theme-dark" id="main-body">
@@ -45,10 +44,13 @@
     </div>
 
     <div id="chat-screen" style="display: none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
             <div id="status-indicator" style="font-size: 0.75em; opacity: 0.7;">Locating...</div>
             <div style="display: flex; align-items: center;">
-                <button class="btn" onclick="startCall()" style="background: #28a745; color: white; padding: 5px 15px; margin-right: 8px;">📞 CALL</button>
+                <label style="color: white; font-size: 0.75em; display: flex; align-items: center; margin-right: 15px; cursor: pointer;">
+                    <input type="checkbox" id="blur-toggle" style="margin-right: 5px;"> Blur Images
+                </label>
+                <button class="btn" onclick="startCall()" style="background: #28a745; color: white; padding: 5px 15px; margin-right: 8px;">📞</button>
                 <select onchange="changeTheme(this.value)" id="theme-selector" style="background: #333; color: white; border: none; border-radius: 5px; font-size: 0.8em; padding: 5px;">
                     <option value="theme-dark">Dark</option>
                     <option value="theme-red">Red</option>
@@ -70,9 +72,12 @@
 
         <div id="typing-indicator" class="typing-text">Someone is typing...</div>
 
-        <div style="display: flex; margin-top: 10px;">
-            <label class="btn" style="background: #333; display: flex; align-items: center; justify-content: center; width: 40px; margin-right: 8px;">
+        <div style="display: flex; margin-top: 10px; align-items: center;">
+            <label class="btn" style="background: #333; display: flex; align-items: center; justify-content: center; width: 40px; margin-right: 5px;">
                 📷<input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="previewImage()">
+            </label>
+            <label class="btn" style="background: #e0a800; display: flex; align-items: center; justify-content: center; width: 40px; margin-right: 8px;">
+                🎤<input type="file" id="audioInput" accept="audio/*" capture="microphone" style="display: none;" onchange="previewAudio()">
             </label>
             <input type="text" id="msgInput" placeholder="Message..." style="flex-grow: 1; margin-right: 8px;">
             <button class="btn" onclick="sendText()" style="background: #007bff; color: white; padding: 0 20px;">SEND</button>
@@ -90,11 +95,31 @@
         </div>
     </div>
 
+    <div id="audio-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
+        <h3 style="color: white;">Confirm Voice Note?</h3>
+        <audio id="audio-preview" controls style="width: 80%; margin-bottom: 20px;"></audio>
+        <div style="display: flex;">
+            <button class="btn" onclick="closeAudioPreview()" style="background: #555; color: white; padding: 15px 25px; margin-right: 20px;">CANCEL</button>
+            <button class="btn" onclick="confirmAudioSend()" style="background: #28a745; color: white; padding: 15px 30px;">SEND</button>
+        </div>
+    </div>
+
     <div id="incoming-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
         <h2 style="color: white; margin-bottom: 30px;">Incoming Call...</h2>
         <div style="display: flex;">
             <button class="btn" onclick="endCall(true)" style="background: #dc3545; color: white; padding: 15px 30px; margin-right: 20px; border-radius: 30px;">DECLINE</button>
             <button class="btn" onclick="answerCall()" style="background: #28a745; color: white; padding: 15px 30px; border-radius: 30px;">ANSWER</button>
+        </div>
+    </div>
+
+    <div id="context-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; justify-content: center;" onclick="if(event.target===this) closeMenu()">
+        <div style="background: #222; width: 100%; padding: 20px; border-top-left-radius: 20px; border-top-right-radius: 20px; box-sizing: border-box; text-align: center;">
+            <div style="width: 40px; height: 5px; background: #555; border-radius: 5px; margin: 0 auto 15px auto;"></div>
+            
+            <button class="btn" style="width:100%; background: #333; color: white; margin-bottom: 10px; padding: 15px;" onclick="copyMessage()">📋 Copy Text</button>
+            <button class="btn" id="delete-everyone-btn" style="width:100%; background: #dc3545; color: white; margin-bottom: 10px; padding: 15px;" onclick="deleteForEveryone()">🗑️ Delete for Everyone</button>
+            <button class="btn" style="width:100%; background: #ffc107; color: black; margin-bottom: 10px; padding: 15px;" onclick="deleteForMe()">👁️ Delete for Me</button>
+            <button class="btn" style="width:100%; background: #555; color: white; padding: 15px;" onclick="closeMenu()">Cancel</button>
         </div>
     </div>
 
@@ -113,7 +138,13 @@
         const db = firebase.database();
         let currentUser = "";
         let otherUser = "";
+        
         let pendingImg = null;
+        let pendingAudio = null;
+
+        let activeMsgKey = null;
+        let activeMsgText = "";
+        let activeMsgSender = "";
 
         // WebRTC Variables
         const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
@@ -150,7 +181,6 @@
             document.getElementById("chat-screen").style.display = "block";
             if (currentUser === "Voided") document.getElementById("nuke-btn").style.display = "block";
             
-            // Heartbeat
             setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 10000);
             db.ref("status").on("value", (snap) => {
                 const lastSeen = snap.val() ? snap.val()[otherUser] : 0;
@@ -171,58 +201,129 @@
             else statusEl.innerText = otherUser + ": Active " + Math.floor(diff/60) + "m ago";
         }
 
-        // --- TYPING INDICATOR LOGIC ---
+        // --- LIVE TYPING INDICATOR LOGIC ---
         function setupTypingIndicator() {
             let typingTimeout;
             const inputField = document.getElementById("msgInput");
             
             inputField.addEventListener("input", () => {
-                db.ref("typing/" + currentUser).set(true);
+                const currentText = inputField.value;
+                // Send the actual text they are typing instead of just 'true'
+                db.ref("typing/" + currentUser).set(currentText);
+                
                 clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    db.ref("typing/" + currentUser).set(false);
-                }, 2000); // Clears after 2 seconds of no typing
+                // Clear it if they stop typing for 3 seconds
+                typingTimeout = setTimeout(() => { db.ref("typing/" + currentUser).set(""); }, 3000);
             });
 
             db.ref("typing/" + otherUser).on("value", (snap) => {
-                const isTyping = snap.val() || false;
-                document.getElementById("typing-indicator").style.display = isTyping ? "block" : "none";
-                document.getElementById("typing-indicator").innerText = otherUser + " is typing...";
-                if(isTyping) {
+                const typedText = snap.val() || "";
+                if(typedText.length > 0) {
+                    document.getElementById("typing-indicator").style.display = "block";
+                    document.getElementById("typing-indicator").innerText = otherUser + " is typing: " + typedText;
                     const box = document.getElementById("chat-box");
                     box.scrollTop = box.scrollHeight;
+                } else {
+                    document.getElementById("typing-indicator").style.display = "none";
                 }
             });
         }
 
-        // --- CHAT LOGIC ---
+        // --- CORE CHAT & CONTEXT MENU ---
         function loadMessages() {
             const box = document.getElementById("chat-box");
             box.innerHTML = ""; 
+            
             db.ref("messages").limitToLast(50).on("child_added", (snap) => {
+                const key = snap.key;
                 const data = snap.val();
+                
+                if (data.deletedFor && data.deletedFor[currentUser]) return;
+
                 const div = document.createElement("div");
+                div.id = "msg-" + key;
                 const isMe = (data.user === currentUser);
                 div.className = "bubble";
                 div.style.alignSelf = isMe ? "flex-end" : "flex-start";
                 div.style.background = isMe ? "#007bff" : "#444";
                 
-                let html = `<span style="font-size:0.6em; opacity:0.6;">${data.user}</span><br>`;
+                const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '&quot;') : "";
+                
+                let html = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                                <span style="font-size:0.6em; opacity:0.6;">${data.user}</span>
+                                <button style="background:none; border:none; color:inherit; opacity:0.6; font-size:1.3em; cursor:pointer; padding: 0 5px;" onclick="openMenu('${key}', '${safeText}', '${data.user}')">⋮</button>
+                            </div>`;
+                            
                 if (data.text) html += `<span>${data.text}</span>`;
+                
                 if (data.image) {
-                    html += `<img src="${data.image}" style="width:100%; border-radius:10px; margin-top:5px;">`;
+                    const blurCSS = data.blurred ? "-webkit-filter: blur(20px); filter: blur(20px);" : "";
+                    html += `<img src="${data.image}" style="width:100%; border-radius:10px; margin-top:5px; transition: 0.3s; cursor: pointer; ${blurCSS}" onclick="this.style.filter = (this.style.filter === 'none' || this.style.filter === '') ? 'blur(20px)' : 'none'; this.style.webkitFilter = this.style.filter;">`;
                     html += `<br><button class="btn" style="font-size:0.6em; margin-top:8px; padding:5px; background:rgba(0,0,0,0.3); color:white; width:100%;" onclick="saveImg('${data.image}')">OPEN & SAVE</button>`;
                 }
+
+                if (data.audio) {
+                    html += `<audio controls src="${data.audio}" style="width:100%; margin-top: 5px; height: 35px;"></audio>`;
+                }
+                
                 div.innerHTML = html;
                 box.appendChild(div);
                 box.scrollTop = box.scrollHeight;
             });
+
+            db.ref("messages").on("child_removed", (snap) => {
+                const el = document.getElementById("msg-" + snap.key);
+                if (el) el.remove();
+            });
+
+            db.ref("messages").on("child_changed", (snap) => {
+                const data = snap.val();
+                if (data.deletedFor && data.deletedFor[currentUser]) {
+                    const el = document.getElementById("msg-" + snap.key);
+                    if (el) el.remove();
+                }
+            });
         }
 
+        // --- CONTEXT MENU ACTIONS ---
+        function openMenu(key, text, sender) {
+            activeMsgKey = key;
+            activeMsgText = text || "";
+            activeMsgSender = sender;
+            
+            document.getElementById("delete-everyone-btn").style.display = (sender === currentUser) ? "block" : "none";
+            document.getElementById("context-modal").style.display = "flex";
+        }
+
+        function closeMenu() { document.getElementById("context-modal").style.display = "none"; }
+
+        function copyMessage() {
+            if (!activeMsgText) { closeMenu(); return; }
+            const textArea = document.createElement("textarea");
+            textArea.value = activeMsgText;
+            textArea.style.position = "fixed"; 
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { document.execCommand('copy'); alert("Copied!"); } catch (err) { alert("Failed to copy text."); }
+            document.body.removeChild(textArea);
+            closeMenu();
+        }
+
+        function deleteForEveryone() {
+            if (activeMsgKey) db.ref("messages/" + activeMsgKey).remove();
+            closeMenu();
+        }
+
+        function deleteForMe() {
+            if (activeMsgKey) db.ref("messages/" + activeMsgKey + "/deletedFor/" + currentUser).set(true);
+            closeMenu();
+        }
+
+        // --- MEDIA HANDLERS ---
         function saveImg(dataUrl) {
             const win = window.open();
-            win.document.write('<img src="' + dataUrl + '" style="width:100%;">');
-            win.document.write('<h2 style="text-align:center;">Long Press to Save</h2>');
+            win.document.write('<img src="' + dataUrl + '" style="width:100%;"><h2 style="text-align:center;">Long Press to Save</h2>');
         }
 
         function sendText() {
@@ -230,7 +331,8 @@
             if (val) {
                 db.ref("messages").push({ user: currentUser, text: val, timestamp: Date.now() });
                 document.getElementById("msgInput").value = "";
-                db.ref("typing/" + currentUser).set(false); // Stop typing immediately
+                // Clear typing indicator instantly upon sending
+                db.ref("typing/" + currentUser).set("");
             }
         }
 
@@ -248,12 +350,40 @@
         }
 
         function closePreview() { document.getElementById("preview-modal").style.display = "none"; }
+        
         function confirmSend() {
             if (pendingImg) {
-                db.ref("messages").push({ user: currentUser, image: pendingImg, timestamp: Date.now() });
+                const applyBlur = document.getElementById("blur-toggle").checked;
+                db.ref("messages").push({ user: currentUser, image: pendingImg, blurred: applyBlur, timestamp: Date.now() });
                 closePreview();
             }
         }
+
+        function previewAudio() {
+            const file = document.getElementById("audioInput").files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    pendingAudio = e.target.result;
+                    document.getElementById("audio-preview").src = pendingAudio;
+                    document.getElementById("audio-modal").style.display = "flex";
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function closeAudioPreview() { 
+            document.getElementById("audio-preview").src = "";
+            document.getElementById("audio-modal").style.display = "none"; 
+        }
+
+        function confirmAudioSend() {
+            if (pendingAudio) {
+                db.ref("messages").push({ user: currentUser, audio: pendingAudio, timestamp: Date.now() });
+                closeAudioPreview();
+            }
+        }
+
         function nukeChat() { if (confirm("Delete everything?")) { db.ref("messages").remove(); location.reload(); } }
 
         // --- WEBRTC VIDEO LOGIC ---
@@ -289,12 +419,8 @@
             const offerDescription = await pc.createOffer();
             await pc.setLocalDescription(offerDescription);
 
-            await callDoc.set({ 
-                offer: { sdp: offerDescription.sdp, type: offerDescription.type },
-                caller: currentUser
-            });
+            await callDoc.set({ offer: { sdp: offerDescription.sdp, type: offerDescription.type }, caller: currentUser });
 
-            // Listen for Answer
             callDoc.on('value', snapshot => {
                 const data = snapshot.val();
                 if (!pc.currentRemoteDescription && data?.answer) {
@@ -303,7 +429,6 @@
                 }
             });
 
-            // Listen for Remote ICE
             callDoc.child('answerCandidates').on('child_added', snapshot => {
                 const candidate = new RTCIceCandidate(snapshot.val());
                 pc.addIceCandidate(candidate);
@@ -313,14 +438,10 @@
         function listenForCalls() {
             db.ref('call').on('value', snapshot => {
                 const data = snapshot.val();
-                // If call data exists, an offer exists, we aren't the caller, and we don't have an active connection
                 if (data && data.offer && data.caller !== currentUser && !pc) {
                     document.getElementById("incoming-modal").style.display = "flex";
                 }
-                // If call node is deleted remotely, hang up locally
-                if (!data && pc) {
-                    endCall(false);
-                }
+                if (!data && pc) { endCall(false); }
             });
         }
 
@@ -337,9 +458,7 @@
             const answerDescription = await pc.createAnswer();
             await pc.setLocalDescription(answerDescription);
 
-            await callDoc.update({
-                answer: { sdp: answerDescription.sdp, type: answerDescription.type }
-            });
+            await callDoc.update({ answer: { sdp: answerDescription.sdp, type: answerDescription.type } });
 
             callDoc.child('offerCandidates').on('child_added', snapshot => {
                 const candidate = new RTCIceCandidate(snapshot.val());
@@ -351,17 +470,12 @@
             document.getElementById("incoming-modal").style.display = "none";
             document.getElementById("video-container").style.display = "none";
             
-            if (pc) {
-                pc.close();
-                pc = null;
-            }
+            if (pc) { pc.close(); pc = null; }
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
                 localStream = null;
             }
-            if (triggerDelete) {
-                db.ref('call').remove();
-            }
+            if (triggerDelete) db.ref('call').remove();
         }
     </script>
 </body>
