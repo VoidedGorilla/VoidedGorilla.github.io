@@ -158,13 +158,13 @@
     let pc = null;
     let localStream = null;
     let remoteStream = null;
+    let isCaller = false; // Tracks who initiated the WebRTC connection
 
     let isMicOff = false;
     let isCamOff = false;
     let isDeafened = false;
     let isLocalPreviewHidden = false;
 
-    // Safety net for private browsing on iOS 12
     let savedTheme = 'theme-dark';
     try {
       savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
@@ -472,16 +472,23 @@
     async function createPeerConnection(callDoc) {
       pc = new RTCPeerConnection(servers);
       localStream.getTracks().forEach(function(track) { pc.addTrack(track, localStream); });
-      pc.ontrack = function(event) { event.streams[0].getTracks().forEach(function(track) { remoteStream.addTrack(track); }); };
+      
+      pc.ontrack = function(event) { 
+        // iOS 12 Fix: Reassign srcObject explicitly instead of blindly adding tracks
+        document.getElementById("remoteVideo").srcObject = event.streams[0]; 
+      };
+      
       pc.onicecandidate = function(event) {
         if (event.candidate) {
-          const collection = (callDoc.key === 'call' && pc.localDescription.type === 'offer') ? 'offerCandidates' : 'answerCandidates';
+          // Explicitly sort ICE candidates based on who initiated the call
+          const collection = isCaller ? 'offerCandidates' : 'answerCandidates';
           callDoc.child(collection).push(event.candidate.toJSON());
         }
       };
     }
 
     async function startCall() {
+      isCaller = true;
       await setupMedia();
       const callDoc = db.ref('call');
       await createPeerConnection(callDoc);
@@ -491,14 +498,14 @@
 
       callDoc.on('value', function(snapshot) {
         const data = snapshot.val();
-        // REMOVED OPTIONAL CHAINING HERE
-        if (!pc.currentRemoteDescription && data && data.answer) {
+        if (pc && !pc.currentRemoteDescription && data && data.answer) {
           pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         }
       });
 
       callDoc.child('answerCandidates').on('child_added', function(snapshot) {
-        pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
+        try { pc.addIceCandidate(new RTCIceCandidate(snapshot.val())); } 
+        catch(e) { setTimeout(function() { if(pc) pc.addIceCandidate(new RTCIceCandidate(snapshot.val())); }, 1000); }
       });
     }
 
@@ -514,6 +521,7 @@
     }
 
     async function answerCall() {
+      isCaller = false;
       document.getElementById("incoming-modal").style.display = "none";
       await setupMedia();
       const callDoc = db.ref('call');
@@ -526,7 +534,8 @@
       await callDoc.update({ answer: { sdp: answerDescription.sdp, type: answerDescription.type } });
 
       callDoc.child('offerCandidates').on('child_added', function(snapshot) {
-        pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
+        try { pc.addIceCandidate(new RTCIceCandidate(snapshot.val())); } 
+        catch(e) { setTimeout(function() { if(pc) pc.addIceCandidate(new RTCIceCandidate(snapshot.val())); }, 1000); }
       });
     }
 
