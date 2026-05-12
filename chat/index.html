@@ -12,17 +12,29 @@
     .btn { padding: 10px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
     .bubble { padding: 10px; border-radius: 15px; margin-bottom: 8px; max-width: 85%; word-wrap: break-word; position: relative; }
     #chat-box { height: 60vh; overflow-y: scroll; display: flex; flex-direction: column; padding: 10px; border-radius: 10px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); position: relative; }
+    
     .theme-dark { background: #121212; color: #eee; }
     .theme-matrix { background: #001a00; color: #00ff00; }
     .theme-vapor { background: #2b0031; color: #ff00ff; }
     .theme-red { background: #2e0000; color: #ff4d4d; }
+    
     input[type="text"], input[type="password"] { background: #333; color: white; border: none; border-radius: 8px; padding: 10px; }
     #chat-screen > div:first-child select { margin-left: 8px; }
     #chat-screen > div:nth-child(4) input[type="text"] { margin-left: 8px; margin-right: 8px; }
+    
+    /* Video UI */
     #video-container { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 50; border-radius: 10px; overflow: hidden; }
     #remoteVideo { width: 100%; height: 100%; object-fit: cover; }
-    #localVideo { width: 30%; position: absolute; bottom: 10px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; }
-    #hangup-btn { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: #dc3545; color: white; padding: 15px 30px; border-radius: 30px; z-index: 51; }
+    
+    /* Mirrored local video */
+    #localVideo { width: 30%; position: absolute; bottom: 90px; right: 10px; border-radius: 8px; border: 2px solid white; object-fit: cover; transform: scaleX(-1); cursor: pointer; transition: 0.3s; }
+    
+    /* Call Controls Bar */
+    #call-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px 15px; border-radius: 40px; z-index: 51; align-items: center; }
+    .ctrl-icon { background: #444; color: white; border: none; border-radius: 50%; width: 45px; height: 45px; font-size: 1.2em; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+    .ctrl-icon.off { background: #dc3545; }
+    #hangup-btn { background: #dc3545; color: white; padding: 0 20px; height: 45px; border-radius: 30px; font-weight: bold; border: none; cursor: pointer; }
+    
     .typing-text { font-size: 0.75em; opacity: 0.7; font-style: italic; margin-top: 5px; display: none; word-wrap: break-word; }
   </style>
 </head>
@@ -56,8 +68,14 @@
       <div id="chat-box"></div>
       <div id="video-container">
         <video id="remoteVideo" autoplay playsinline></video>
-        <video id="localVideo" autoplay muted playsinline></video>
-        <button id="hangup-btn" class="btn" onclick="endCall(true)">HANG UP</button>
+        <video id="localVideo" autoplay muted playsinline onclick="toggleLocalPreview()"></video>
+        <div id="call-controls">
+          <button id="mic-btn" class="ctrl-icon" onclick="toggleMic()">🎤</button>
+          <button id="deafen-btn" class="ctrl-icon" onclick="toggleDeafen()">🔊</button>
+          <button id="cam-btn" class="ctrl-icon" onclick="toggleCam()">📷</button>
+          <button id="preview-btn" class="ctrl-icon" onclick="toggleLocalPreview()">👤</button>
+          <button id="hangup-btn" onclick="endCall(true)">HANG UP</button>
+        </div>
       </div>
     </div>
 
@@ -132,15 +150,21 @@
     
     let pendingImg = null;
     let pendingAudio = null;
-
     let activeMsgKey = null;
     let activeMsgText = "";
     let activeMsgSender = "";
+    let appLoadTime = Date.now(); 
 
     const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
     let pc = null;
     let localStream = null;
     let remoteStream = null;
+
+    // Call state variables
+    let isMicOff = false;
+    let isCamOff = false;
+    let isDeafened = false;
+    let isLocalPreviewHidden = false;
 
     const savedTheme = localStorage.getItem('user-theme') || 'theme-dark';
     document.getElementById('main-body').className = savedTheme;
@@ -154,15 +178,20 @@
     function checkPassword() {
       const pass = btoa(document.getElementById("passInput").value);
       if (pass === "Y2VtaXlhaA==") { 
-        currentUser = "Cemiyah"; 
-        otherUser = "Voided";
-        setup(); 
+        currentUser = "Cemiyah"; otherUser = "Voided"; setup(); 
       } else if (pass === "dm9pZGVk") { 
-        currentUser = "Voided"; 
-        otherUser = "Cemiyah";
-        setup(); 
+        currentUser = "Voided"; otherUser = "Cemiyah"; setup(); 
       } else {
         alert("Access Denied");
+      }
+    }
+
+    function triggerPushNotification(title, body) {
+      if (document.hidden) {
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification(title, { body: body });
+        }
+        if (navigator.vibrate) { navigator.vibrate([200, 100, 200]); }
       }
     }
 
@@ -171,6 +200,10 @@
       document.getElementById("chat-screen").style.display = "block";
       if (currentUser === "Voided") document.getElementById("nuke-btn").style.display = "block";
       
+      if ("Notification" in window && Notification.permission !== "granted") {
+        Notification.requestPermission();
+      }
+
       window.addEventListener("focus", () => db.ref("status/" + currentUser).set(Date.now()));
       setInterval(() => { db.ref("status/" + currentUser).set(Date.now()); }, 10000);
       setInterval(updateSeenIndicator, 30000);
@@ -212,21 +245,13 @@
 
         if (otherUserLastActive >= msgTime) {
           const diffSeconds = Math.floor((Date.now() - otherUserLastActive) / 1000);
-          if (diffSeconds < 60) {
-            seenSpan.innerText = "Seen just now";
-          } else {
+          if (diffSeconds < 60) { seenSpan.innerText = "Seen just now"; } 
+          else {
             const mins = Math.floor(diffSeconds / 60);
-            if (mins >= 60) {
-              const hrs = Math.floor(mins / 60);
-              seenSpan.innerText = `Seen ${hrs}h ago`;
-            } else {
-              seenSpan.innerText = `Seen ${mins}m ago`;
-            }
+            if (mins >= 60) { seenSpan.innerText = `Seen ${Math.floor(mins / 60)}h ago`; } 
+            else { seenSpan.innerText = `Seen ${mins}m ago`; }
           }
-        } else {
-          seenSpan.innerText = "Delivered";
-        }
-        
+        } else { seenSpan.innerText = "Delivered"; }
         box.appendChild(seenSpan);
       }
     }
@@ -236,8 +261,7 @@
       const inputField = document.getElementById("msgInput");
       
       inputField.addEventListener("input", () => {
-        const currentText = inputField.value;
-        db.ref("typing/" + currentUser).set(currentText);
+        db.ref("typing/" + currentUser).set(inputField.value);
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(() => { db.ref("typing/" + currentUser).set(""); }, 3000);
       });
@@ -269,6 +293,14 @@
         
         if (data.deletedFor && data.deletedFor[currentUser]) return;
 
+        if (data.timestamp > appLoadTime && data.user !== currentUser) {
+          let pushBody = "New message";
+          if (data.text) pushBody = data.text;
+          else if (data.image) pushBody = "📷 Sent an image";
+          else if (data.audio) pushBody = "🎤 Sent a voice note";
+          triggerPushNotification(data.user, pushBody);
+        }
+
         const div = document.createElement("div");
         div.id = "msg-" + key;
         div.className = "bubble";
@@ -287,24 +319,17 @@
                     </div>`;
                     
         if (data.text) html += `<span>${data.text}</span>`;
-        
         if (data.image) {
           const blurCSS = data.blurred ? "-webkit-filter: blur(20px); filter: blur(20px);" : "";
           html += `<img src="${data.image}" style="width:100%; border-radius:10px; margin-top:5px; transition: 0.3s; cursor: pointer; ${blurCSS}" onclick="this.style.filter = (this.style.filter === 'none' || this.style.filter === '') ? 'blur(20px)' : 'none'; this.style.webkitFilter = this.style.filter;">`;
           html += `<br><button class="btn" style="font-size:0.6em; margin-top:8px; padding:5px; background:rgba(0,0,0,0.3); color:white; width:100%;" onclick="saveImg('${data.image}')">OPEN & SAVE</button>`;
         }
-
-        if (data.audio) {
-          html += `<audio controls src="${data.audio}" style="width:100%; margin-top: 5px; height: 35px;"></audio>`;
-        }
+        if (data.audio) { html += `<audio controls src="${data.audio}" style="width:100%; margin-top: 5px; height: 35px;"></audio>`; }
         
         div.innerHTML = html;
         box.appendChild(div);
         
-        if (document.hasFocus()) {
-          db.ref("status/" + currentUser).set(Date.now());
-        }
-
+        if (document.hasFocus()) { db.ref("status/" + currentUser).set(Date.now()); }
         updateSeenIndicator();
         box.scrollTop = box.scrollHeight;
       });
@@ -326,67 +351,39 @@
     }
 
     function openMenu(key, text, sender) {
-      activeMsgKey = key;
-      activeMsgText = text || "";
-      activeMsgSender = sender;
+      activeMsgKey = key; activeMsgText = text || ""; activeMsgSender = sender;
       document.getElementById("delete-everyone-btn").style.display = (sender === currentUser) ? "block" : "none";
       document.getElementById("context-modal").style.display = "flex";
     }
 
     function closeMenu() { document.getElementById("context-modal").style.display = "none"; }
-
     function copyMessage() {
       if (!activeMsgText) { closeMenu(); return; }
       const textArea = document.createElement("textarea");
-      textArea.value = activeMsgText;
-      textArea.style.position = "fixed"; 
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
+      textArea.value = activeMsgText; textArea.style.position = "fixed"; 
+      document.body.appendChild(textArea); textArea.focus(); textArea.select();
       try { document.execCommand('copy'); alert("Copied!"); } catch (err) { alert("Failed to copy text."); }
-      document.body.removeChild(textArea);
-      closeMenu();
+      document.body.removeChild(textArea); closeMenu();
     }
-
-    function deleteForEveryone() {
-      if (activeMsgKey) db.ref("messages/" + activeMsgKey).remove();
-      closeMenu();
-    }
-
-    function deleteForMe() {
-      if (activeMsgKey) db.ref("messages/" + activeMsgKey + "/deletedFor/" + currentUser).set(true);
-      closeMenu();
-    }
-
-    function saveImg(dataUrl) {
-      const win = window.open();
-      win.document.write('<img src="' + dataUrl + '" style="width:100%;"><h2 style="text-align:center;">Long Press to Save</h2>');
-    }
-
+    function deleteForEveryone() { if (activeMsgKey) db.ref("messages/" + activeMsgKey).remove(); closeMenu(); }
+    function deleteForMe() { if (activeMsgKey) db.ref("messages/" + activeMsgKey + "/deletedFor/" + currentUser).set(true); closeMenu(); }
+    function saveImg(dataUrl) { const win = window.open(); win.document.write('<img src="' + dataUrl + '" style="width:100%;"><h2 style="text-align:center;">Long Press to Save</h2>'); }
     function sendText() {
       const val = document.getElementById("msgInput").value;
       if (val) {
         db.ref("messages").push({ user: currentUser, text: val, timestamp: Date.now() });
-        document.getElementById("msgInput").value = "";
-        db.ref("typing/" + currentUser).set("");
+        document.getElementById("msgInput").value = ""; db.ref("typing/" + currentUser).set("");
       }
     }
-
     function previewImage() {
       const file = document.getElementById("cameraInput").files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          pendingImg = e.target.result;
-          document.getElementById("img-preview").src = pendingImg;
-          document.getElementById("preview-modal").style.display = "flex";
-        };
+        reader.onload = (e) => { pendingImg = e.target.result; document.getElementById("img-preview").src = pendingImg; document.getElementById("preview-modal").style.display = "flex"; };
         reader.readAsDataURL(file);
       }
     }
-
     function closePreview() { document.getElementById("preview-modal").style.display = "none"; }
-    
     function confirmSend() {
       if (pendingImg) {
         const applyBlur = document.getElementById("blur-toggle").checked;
@@ -394,34 +391,67 @@
         closePreview();
       }
     }
-
     function previewAudio() {
       const file = document.getElementById("audioInput").files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
-          pendingAudio = e.target.result;
-          document.getElementById("audio-preview").src = pendingAudio;
-          document.getElementById("audio-modal").style.display = "flex";
-        };
+        reader.onload = (e) => { pendingAudio = e.target.result; document.getElementById("audio-preview").src = pendingAudio; document.getElementById("audio-modal").style.display = "flex"; };
         reader.readAsDataURL(file);
       }
     }
-
-    function closeAudioPreview() { 
-      document.getElementById("audio-preview").src = "";
-      document.getElementById("audio-modal").style.display = "none"; 
-    }
-
+    function closeAudioPreview() { document.getElementById("audio-preview").src = ""; document.getElementById("audio-modal").style.display = "none"; }
     function confirmAudioSend() {
-      if (pendingAudio) {
-        db.ref("messages").push({ user: currentUser, audio: pendingAudio, timestamp: Date.now() });
-        closeAudioPreview();
+      if (pendingAudio) { db.ref("messages").push({ user: currentUser, audio: pendingAudio, timestamp: Date.now() }); closeAudioPreview(); }
+    }
+    function nukeChat() { if (confirm("Delete everything?")) { db.ref("messages").remove(); location.reload(); } }
+
+    /* MEDIA CONTROLS */
+    function toggleMic() {
+      if (localStream) {
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+          isMicOff = !isMicOff;
+          audioTrack.enabled = !isMicOff;
+          document.getElementById("mic-btn").classList.toggle("off", isMicOff);
+        }
       }
     }
 
-    function nukeChat() { if (confirm("Delete everything?")) { db.ref("messages").remove(); location.reload(); } }
+    function toggleCam() {
+      if (localStream) {
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+          isCamOff = !isCamOff;
+          videoTrack.enabled = !isCamOff;
+          document.getElementById("cam-btn").classList.toggle("off", isCamOff);
+        }
+      }
+    }
 
+    function toggleDeafen() {
+      const remoteVid = document.getElementById("remoteVideo");
+      isDeafened = !isDeafened;
+      remoteVid.muted = isDeafened;
+      document.getElementById("deafen-btn").classList.toggle("off", isDeafened);
+    }
+    
+    function toggleLocalPreview() {
+      isLocalPreviewHidden = !isLocalPreviewHidden;
+      document.getElementById("localVideo").style.display = isLocalPreviewHidden ? "none" : "block";
+      document.getElementById("preview-btn").classList.toggle("off", isLocalPreviewHidden);
+    }
+
+    function resetMediaControls() {
+      isMicOff = false; isCamOff = false; isDeafened = false; isLocalPreviewHidden = false;
+      document.getElementById("mic-btn").classList.remove("off");
+      document.getElementById("cam-btn").classList.remove("off");
+      document.getElementById("deafen-btn").classList.remove("off");
+      document.getElementById("preview-btn").classList.remove("off");
+      document.getElementById("remoteVideo").muted = false;
+      document.getElementById("localVideo").style.display = "block";
+    }
+
+    /* WEBRTC SETUP */
     async function setupMedia() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -429,20 +459,16 @@
         document.getElementById("localVideo").srcObject = localStream;
         document.getElementById("remoteVideo").srcObject = remoteStream;
         document.getElementById("video-container").style.display = "block";
+        resetMediaControls();
       } catch (err) {
-        alert("Call Error: " + err.name + " - " + err.message);
-        throw err; 
+        alert("Call Error: " + err.name + " - " + err.message); throw err; 
       }
     }
 
     async function createPeerConnection(callDoc) {
       pc = new RTCPeerConnection(servers);
       localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-      
-      pc.ontrack = event => {
-        event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track));
-      };
-
+      pc.ontrack = event => { event.streams[0].getTracks().forEach(track => remoteStream.addTrack(track)); };
       pc.onicecandidate = event => {
         if (event.candidate) {
           const collection = (callDoc.key === 'call' && pc.localDescription.type === 'offer') ? 'offerCandidates' : 'answerCandidates';
@@ -455,23 +481,19 @@
       await setupMedia();
       const callDoc = db.ref('call');
       await createPeerConnection(callDoc);
-
       const offerDescription = await pc.createOffer();
       await pc.setLocalDescription(offerDescription);
-
       await callDoc.set({ offer: { sdp: offerDescription.sdp, type: offerDescription.type }, caller: currentUser });
 
       callDoc.on('value', snapshot => {
         const data = snapshot.val();
         if (!pc.currentRemoteDescription && data?.answer) {
-          const answerDescription = new RTCSessionDescription(data.answer);
-          pc.setRemoteDescription(answerDescription);
+          pc.setRemoteDescription(new RTCSessionDescription(data.answer));
         }
       });
 
       callDoc.child('answerCandidates').on('child_added', snapshot => {
-        const candidate = new RTCIceCandidate(snapshot.val());
-        pc.addIceCandidate(candidate);
+        pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
       });
     }
 
@@ -480,6 +502,7 @@
         const data = snapshot.val();
         if (data && data.offer && data.caller !== currentUser && !pc) {
           document.getElementById("incoming-modal").style.display = "flex";
+          triggerPushNotification("Incoming Call 📞", data.caller + " is calling you!");
         }
         if (!data && pc) { endCall(false); }
       });
@@ -492,29 +515,21 @@
       await createPeerConnection(callDoc);
 
       const callData = (await callDoc.get()).val();
-      const offerDescription = callData.offer;
-      await pc.setRemoteDescription(new RTCSessionDescription(offerDescription));
-
+      await pc.setRemoteDescription(new RTCSessionDescription(callData.offer));
       const answerDescription = await pc.createAnswer();
       await pc.setLocalDescription(answerDescription);
-
       await callDoc.update({ answer: { sdp: answerDescription.sdp, type: answerDescription.type } });
 
       callDoc.child('offerCandidates').on('child_added', snapshot => {
-        const candidate = new RTCIceCandidate(snapshot.val());
-        pc.addIceCandidate(candidate);
+        pc.addIceCandidate(new RTCIceCandidate(snapshot.val()));
       });
     }
 
     function endCall(triggerDelete) {
       document.getElementById("incoming-modal").style.display = "none";
       document.getElementById("video-container").style.display = "none";
-      
       if (pc) { pc.close(); pc = null; }
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
+      if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
       if (triggerDelete) db.ref('call').remove();
     }
   </script>
