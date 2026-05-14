@@ -225,19 +225,24 @@
     let isSpying = false;
     let userColors = {}; 
     
-    // Status & Deletion Listeners
+    // Status & Listeners
     let targetUser = "";
     let targetUserLastActive = 0;
+    
+    // STRICT LISTENER MANAGEMENT
+    let messageListener = null;
+    let removeListener = null;
+    let typingListener = null;
     let statusRef = null;
     let statusCallback = null;
-    let removeListener = null;
+    let callListener = null;
     
-    // Context Menu State
     let activeMsgKey = null;
     let activeMsgText = "";
     
     let pendingImg = null; let pendingAudio = null; let pendingVideo = null;
     let appLoadTime = Date.now(); 
+    let isFetchingLocation = false;
 
     // WebRTC State
     const servers = { iceServers: [{ urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] }] };
@@ -245,7 +250,6 @@
     let isMicOff = false; let isCamOff = false; let isDeafened = false; let isLocalPreviewHidden = false;
     let controlsVisible = true; let isChatVisibleInCall = false; let currentFacingMode = "user";
     let attachMenuVisible = false;
-    let isFetchingLocation = false;
 
     // --- SECURE LOGIN LOGIC ---
     function checkPassword() {
@@ -307,7 +311,6 @@
     // --- CONTEXT MENU (DELETE/COPY) ---
     function openMenu(key, text, sender) {
       activeMsgKey = key; activeMsgText = text || ""; 
-      // Admins can delete anything, users can only delete their own
       document.getElementById("delete-everyone-btn").style.display = (sender === currentUser || currentUser === "Voided") ? "block" : "none";
       document.getElementById("context-modal").style.display = "flex";
     }
@@ -426,7 +429,9 @@
         snap.forEach(function(child) {
           if (child.val().color) {
             userColors[child.key] = child.val().color;
-            document.querySelectorAll('.user-dot-' + child.key).forEach(el => el.style.backgroundColor = child.val().color);
+            document.querySelectorAll('.user-dot').forEach(el => {
+              if (el.dataset.user === child.key) el.style.backgroundColor = child.val().color;
+            });
           }
         });
       });
@@ -513,10 +518,12 @@
     function joinRoom(roomID, displayTitle, isSpyMode = false) {
       toggleSidebar();
       
-      // Clear old listeners
-      db.ref("rooms/" + currentRoom).off();
+      // Explicitly detach all exact old listeners to prevent cross-room ghosting
+      if (messageListener) db.ref("rooms/" + currentRoom + "/messages").off("child_added", messageListener);
       if (removeListener) db.ref("rooms/" + currentRoom + "/messages").off("child_removed", removeListener);
+      if (typingListener) db.ref("rooms/" + currentRoom + "/typing").off("value", typingListener);
       if (statusRef && statusCallback) statusRef.off("value", statusCallback);
+      if (callListener) db.ref("rooms/" + currentRoom + "/call").off("value", callListener);
       
       currentRoom = roomID;
       isSpying = isSpyMode;
@@ -558,8 +565,7 @@
     function loadMessages() {
       const box = document.getElementById("chat-box");
       
-      // Render new messages
-      db.ref("rooms/" + currentRoom + "/messages").limitToLast(50).on("child_added", function(snap) {
+      messageListener = db.ref("rooms/" + currentRoom + "/messages").limitToLast(50).on("child_added", function(snap) {
         const data = snap.val();
         const key = snap.key;
         
@@ -578,12 +584,11 @@
         div.style.background = isMe ? "#007bff" : "#444";
         
         const dotColor = userColors[data.user] || "#ffffff";
-        const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '&quot;') : "";
+        const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ') : "";
         
-        // FIX: The color dot is pulled out of the opacity block, and the delete menu button is added back!
         let html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">' +
                       '<div style="display:flex; align-items:center;">' +
-                        '<span class="user-dot-' + data.user + '" style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' + dotColor + '; margin-right:6px;"></span>' +
+                        '<span class="user-dot" data-user="' + data.user + '" style="display:inline-block; width:16px; height:16px; border-radius:50%; background-color:' + dotColor + '; margin-right:8px;"></span>' +
                         '<span style="font-size:0.6em; opacity:0.6;">' + data.user + '</span>' +
                       '</div>' +
                       '<button style="background:none; border:none; color:inherit; opacity:0.6; font-size:1.3em; cursor:pointer; padding: 0 5px;" onclick="openMenu(\'' + key + '\', \'' + safeText + '\', \'' + data.user + '\')">⋮</button>' +
@@ -591,7 +596,6 @@
                     
         if (data.text) html += '<span style="white-space: pre-wrap;">' + data.text + '</span>';
         if (data.image) html += '<img src="' + data.image + '" class="chat-img" style="width:100%; border-radius:10px; margin-top:5px; transition: 0.3s; cursor: pointer;">';
-        // FIX: Audio tag updated to prevent squishing on iOS
         if (data.audio) html += '<audio controls src="' + data.audio + '" style="width:100%; min-width:220px; margin-top:5px; border-radius:8px;"></audio>';
         if (data.video) html += '<video controls src="' + data.video + '" style="width:100%; border-radius:10px; margin-top:5px;"></video>';
         
@@ -603,7 +607,6 @@
         updateSeenIndicator(); 
       });
 
-      // Remove deleted messages in real-time
       removeListener = db.ref("rooms/" + currentRoom + "/messages").on("child_removed", function(snap) {
         const el = document.getElementById("msg-" + snap.key);
         if (el) el.remove();
@@ -631,7 +634,7 @@
         typingTimeout = setTimeout(function() { db.ref("rooms/" + currentRoom + "/typing/" + currentUser).remove(); }, 3000);
       };
 
-      db.ref("rooms/" + currentRoom + "/typing").on("value", function(snap) {
+      typingListener = db.ref("rooms/" + currentRoom + "/typing").on("value", function(snap) {
         const data = snap.val() || {};
         
         let typers = Object.keys(data).filter(function(u) { return u !== currentUser && data[u] && data[u].trim().length > 0; });
@@ -726,7 +729,7 @@
           isFetchingLocation = false;
         }, function() { 
           alert("Could not access location."); 
-          isFetchingLocation = false; 
+          isFetchingLocation = false;
         });
       }
     }
@@ -795,7 +798,7 @@
     }
 
     function listenForCalls() {
-      db.ref('rooms/' + currentRoom + '/call').on('value', function(snapshot) {
+      callListener = db.ref('rooms/' + currentRoom + '/call').on('value', function(snapshot) {
         const data = snapshot.val();
         if (data && data.offer && data.caller !== currentUser && !pc) {
           document.getElementById("incoming-modal").style.display = "flex";
@@ -821,7 +824,6 @@
       if (triggerDelete) db.ref('rooms/' + currentRoom + '/call').remove();
     }
     
-    // FIX: Just clears the messages path and UI without reloading the whole page
     function nukeChat() { 
       if (confirm("Delete everything in this room?")) { 
         db.ref("rooms/" + currentRoom + "/messages").remove(); 
