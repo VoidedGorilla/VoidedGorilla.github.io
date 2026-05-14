@@ -157,8 +157,7 @@
 
   <div id="manage-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 10vh;">
     <h2 style="color: white; margin-bottom: 20px;">Manage Network Users</h2>
-    <div id="manage-user-list" style="width: 85%; max-height: 60vh; overflow-y: auto; margin-bottom: 20px;">
-      </div>
+    <div id="manage-user-list" style="width: 85%; max-height: 60vh; overflow-y: auto; margin-bottom: 20px;"></div>
     <button class="btn" onclick="closeManageUsersModal()" style="background: #555; color: white; padding: 15px 40px;">CLOSE</button>
   </div>
 
@@ -215,10 +214,13 @@
     let currentUser = "";
     let currentRoom = "global";
     let isSpying = false;
-    let messageListener = null;
-    let typingListener = null;
-    let callListener = null;
-    let userColors = {}; // Stores all profile colors
+    let userColors = {}; 
+    
+    // Status Tracking State
+    let targetUser = "";
+    let targetUserLastActive = 0;
+    let statusRef = null;
+    let statusCallback = null;
     
     let pendingImg = null; let pendingAudio = null; let pendingVideo = null;
     let appLoadTime = Date.now(); 
@@ -261,7 +263,6 @@
       document.getElementById("login-screen").style.display = "none";
       document.getElementById("chat-screen").style.display = "block";
       
-      // Load user's saved color
       db.ref("users/" + currentUser + "/color").once("value").then(function(snap) {
         if(snap.exists()) document.getElementById("myColorPicker").value = snap.val();
       });
@@ -270,9 +271,12 @@
       window.addEventListener("focus", function() { db.ref("users/" + currentUser + "/lastActive").set(Date.now()); });
       setInterval(function() { db.ref("users/" + currentUser + "/lastActive").set(Date.now()); }, 10000);
       
+      // Re-enable global seen/status loops
+      setInterval(updateSeenIndicator, 30000);
+      setInterval(updateLastSeenText, 30000);
+      
       setupSidebar();
       
-      // STRICT ADMIN LOCK
       if (currentUser === "Voided") { 
         setupAdminSpy(); 
         document.getElementById("admin-controls-section").style.display = "block";
@@ -282,12 +286,11 @@
       joinRoom("global", "🌍 Global Chat");
     }
 
-    // --- PROFILE COLOR LOGIC ---
     function setMyColor(hexCode) {
       db.ref("users/" + currentUser + "/color").set(hexCode);
     }
 
-    // --- ADMIN USER REGISTRATION & MANAGEMENT ---
+    // --- ADMIN USER MANAGEMENT ---
     function openRegisterModal() {
       document.getElementById("register-modal").style.display = "flex";
       toggleSidebar();
@@ -309,12 +312,11 @@
       document.getElementById("manage-modal").style.display = "flex";
       toggleSidebar();
       
-      // Fetch all registered users and build the new expanding UI list
       db.ref("registered_users").once("value", function(snap) {
         let html = "";
         snap.forEach(function(child) {
           const u = child.key;
-          const currentPass = child.val().password; // Pulls their exact password
+          const currentPass = child.val().password; 
           
           html += `<div style="margin-bottom:10px; background:#222; padding:12px; border-radius:8px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -324,14 +326,11 @@
                 <button onclick="adminDeleteUser('${u}')" style="background:#dc3545; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">X</button>
               </div>
             </div>
-            
             <div id="edit-ui-${u}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #444; flex-direction:column; gap:8px;">
               <span style="color:#aaa; font-size:0.8em;">Username:</span>
               <input type="text" id="edit-name-${u}" value="${u}" style="width:100%; padding:10px; border-radius:5px; border:none; background:#333; color:white; box-sizing:border-box;">
-              
               <span style="color:#aaa; font-size:0.8em; margin-top:5px;">Password:</span>
               <input type="text" id="edit-pass-${u}" value="${currentPass}" style="width:100%; padding:10px; border-radius:5px; border:none; background:#333; color:white; box-sizing:border-box;">
-              
               <button onclick="saveUserEdit('${u}')" style="background:#28a745; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold; margin-top:8px;">SAVE CHANGES</button>
             </div>
           </div>`;
@@ -349,27 +348,19 @@
     }
 
     function saveUserEdit(oldName) {
-      if(oldName === "Voided") return; // Hardcoded safety lock
-      
+      if(oldName === "Voided") return; 
       const newName = document.getElementById("edit-name-" + oldName).value.trim();
       const newPass = document.getElementById("edit-pass-" + oldName).value.trim();
-
-      if (newName.length < 2 || newPass.length < 2) { 
-        alert("Username and Password must be at least 2 characters."); 
-        return; 
-      }
+      if (newName.length < 2 || newPass.length < 2) { alert("Username and Password must be at least 2 characters."); return; }
 
       if (newName !== oldName) {
-        // Move credentials to the new username and delete the old one
         db.ref("registered_users/" + newName).set({ password: newPass });
         db.ref("registered_users/" + oldName).remove();
-        db.ref("users/" + oldName).remove(); // Clears their old online status/color
+        db.ref("users/" + oldName).remove(); 
       } else {
-        // Just update the password
         db.ref("registered_users/" + oldName).update({ password: newPass });
       }
-      alert("Credentials updated successfully!");
-      openManageUsersModal(); // Refreshes the UI instantly
+      openManageUsersModal(); 
     }
 
     function adminDeleteUser(uName) {
@@ -377,10 +368,9 @@
       if (confirm("Are you sure you want to PERMANENTLY DELETE user '" + uName + "'?")) {
         db.ref("registered_users/" + uName).remove();
         db.ref("users/" + uName).remove();
-        openManageUsersModal(); // Refresh list
+        openManageUsersModal(); 
       }
     }
-
 
     // --- SIDEBAR LOGIC ---
     function toggleSidebar() {
@@ -394,13 +384,12 @@
     }
 
     function setupSidebar() {
-      // Also pulls Colors for the chat dots
       db.ref("users").on("value", function(snap) {
         snap.forEach(function(child) {
           if (child.val().color) {
             userColors[child.key] = child.val().color;
-            // Instantly update any visible dots for this user in the chat
-            document.querySelectorAll('.user-dot-' + child.key).forEach(el => el.style.color = child.val().color);
+            // Update big geometric dots
+            document.querySelectorAll('.user-dot-' + child.key).forEach(el => el.style.backgroundColor = child.val().color);
           }
         });
       });
@@ -443,13 +432,53 @@
       });
     }
 
+    // --- STATUS INDICATORS ---
+    function updateLastSeenText() {
+      if (!targetUser || isSpying) return;
+      const statusEl = document.getElementById("status-indicator");
+      if (!targetUserLastActive) { statusEl.innerText = targetUser + ": Unknown"; return; }
+      const diff = Math.floor((Date.now() - targetUserLastActive) / 1000);
+      if (diff < 30) statusEl.innerText = targetUser + ": Active Now";
+      else if (diff < 60) statusEl.innerText = targetUser + ": Active " + diff + "s ago";
+      else statusEl.innerText = targetUser + ": Active " + Math.floor(diff/60) + "m ago";
+    }
+
+    function updateSeenIndicator() {
+      if (!targetUser || isSpying) return;
+      const existing = document.getElementById("seen-indicator");
+      if (existing) existing.remove();
+
+      const box = document.getElementById("chat-box");
+      const lastMsg = box.lastElementChild;
+
+      if (!lastMsg || !lastMsg.classList.contains("bubble")) return;
+
+      if (lastMsg.dataset.sender === currentUser) {
+        const msgTime = parseInt(lastMsg.dataset.timestamp);
+        const seenSpan = document.createElement("div");
+        seenSpan.id = "seen-indicator";
+        seenSpan.style.cssText = "font-size: 0.65em; opacity: 0.7; text-align: right; margin-top: -5px; margin-bottom: 10px; width: 100%;";
+
+        if (targetUserLastActive >= msgTime) {
+          const diffSeconds = Math.floor((Date.now() - targetUserLastActive) / 1000);
+          if (diffSeconds < 60) { seenSpan.innerText = "Seen just now"; } 
+          else {
+            const mins = Math.floor(diffSeconds / 60);
+            if (mins >= 60) { seenSpan.innerText = "Seen " + Math.floor(mins / 60) + "h ago"; } 
+            else { seenSpan.innerText = "Seen " + mins + "m ago"; }
+          }
+        } else { seenSpan.innerText = "Delivered"; }
+        box.appendChild(seenSpan);
+      }
+    }
+
     // --- ROOM LOGIC ---
     function joinRoom(roomID, displayTitle, isSpyMode = false) {
       toggleSidebar();
       
-      if (messageListener) db.ref("rooms/" + currentRoom + "/messages").off("child_added", messageListener);
-      if (typingListener) db.ref("rooms/" + currentRoom + "/typing").off("value", typingListener);
-      if (callListener) db.ref("rooms/" + currentRoom + "/call").off("value", callListener);
+      // Wipe old listeners cleanly so messages don't break
+      db.ref("rooms/" + currentRoom).off();
+      if (statusRef && statusCallback) statusRef.off("value", statusCallback);
       
       currentRoom = roomID;
       isSpying = isSpyMode;
@@ -457,6 +486,7 @@
       document.getElementById("chat-box").innerHTML = "";
       
       if (isSpying) {
+        targetUser = "";
         document.getElementById("input-area").style.display = "none";
         document.getElementById("call-init-btn").style.display = "none";
         document.getElementById("status-indicator").innerText = "GHOST MODE ACTIVE - Read Only";
@@ -464,8 +494,22 @@
       } else {
         document.getElementById("input-area").style.display = "flex";
         document.getElementById("call-init-btn").style.display = "block";
-        document.getElementById("status-indicator").innerText = "Connected to " + displayTitle;
         document.getElementById("status-indicator").style.color = "#eee";
+        
+        // If DM, extract their name and hook up live status tracking
+        if (currentRoom.startsWith("dm_")) {
+          let parts = currentRoom.split("_");
+          targetUser = parts[1] === currentUser ? parts[2] : parts[1];
+          statusRef = db.ref("users/" + targetUser + "/lastActive");
+          statusCallback = statusRef.on("value", function(snap) {
+            targetUserLastActive = snap.val() || 0;
+            updateLastSeenText();
+            updateSeenIndicator();
+          });
+        } else {
+          targetUser = "";
+          document.getElementById("status-indicator").innerText = "Connected to " + displayTitle;
+        }
       }
 
       loadMessages();
@@ -477,7 +521,7 @@
     function loadMessages() {
       const box = document.getElementById("chat-box");
       
-      messageListener = db.ref("rooms/" + currentRoom + "/messages").limitToLast(50).on("child_added", function(snap) {
+      db.ref("rooms/" + currentRoom + "/messages").limitToLast(50).on("child_added", function(snap) {
         const data = snap.val();
         
         if (data.timestamp > appLoadTime && data.user !== currentUser && !isSpying) {
@@ -486,16 +530,18 @@
 
         const div = document.createElement("div");
         div.className = "bubble";
+        div.dataset.sender = data.user;
+        div.dataset.timestamp = data.timestamp;
         
         const isMe = (data.user === currentUser);
         div.style.alignSelf = isMe ? "flex-end" : "flex-start";
         div.style.background = isMe ? "#007bff" : "#444";
         
-        // Grab their color or default to white
         const dotColor = userColors[data.user] || "#ffffff";
         
+        // BUG FIX: Using a solid inline-block CSS circle instead of a text character for perfect alignment
         let html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">' +
-                      '<span style="font-size:0.6em; opacity:0.6;"><span class="user-dot-' + data.user + '" style="color:' + dotColor + '; margin-right:3px; font-size:1.2em;">●</span>' + data.user + '</span>' +
+                      '<span style="font-size:0.6em; opacity:0.6; display:flex; align-items:center;"><span class="user-dot-' + data.user + '" style="display:inline-block; width:14px; height:14px; border-radius:50%; background-color:' + dotColor + '; margin-right:6px;"></span>' + data.user + '</span>' +
                     '</div>';
                     
         if (data.text) html += '<span style="white-space: pre-wrap;">' + data.text + '</span>';
@@ -506,7 +552,9 @@
         div.innerHTML = html;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
+        
         toggleGlobalBlur();
+        updateSeenIndicator(); // THE CRITICAL MISSING FUNCTION IS BACK
       });
     }
 
@@ -530,7 +578,7 @@
         typingTimeout = setTimeout(function() { db.ref("rooms/" + currentRoom + "/typing/" + currentUser).remove(); }, 3000);
       };
 
-      typingListener = db.ref("rooms/" + currentRoom + "/typing").on("value", function(snap) {
+      db.ref("rooms/" + currentRoom + "/typing").on("value", function(snap) {
         const data = snap.val() || {};
         
         let typers = Object.keys(data).filter(function(u) { return u !== currentUser && data[u] && data[u].trim().length > 0; });
@@ -662,7 +710,7 @@
       } catch (err) {}
     }
 
-    /* WEBRTC CORE (Isolated to Room) */
+    /* WEBRTC CORE */
     async function setupMedia() {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: currentFacingMode, width: { ideal: 480 }, frameRate: { ideal: 15 } } });
@@ -688,7 +736,7 @@
     }
 
     function listenForCalls() {
-      callListener = db.ref('rooms/' + currentRoom + '/call').on('value', function(snapshot) {
+      db.ref('rooms/' + currentRoom + '/call').on('value', function(snapshot) {
         const data = snapshot.val();
         if (data && data.offer && data.caller !== currentUser && !pc) {
           document.getElementById("incoming-modal").style.display = "flex";
