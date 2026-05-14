@@ -309,45 +309,67 @@
       document.getElementById("manage-modal").style.display = "flex";
       toggleSidebar();
       
-      // Fetch all registered users and build UI list
+      // Fetch all registered users and build the new expanding UI list
       db.ref("registered_users").once("value", function(snap) {
         let html = "";
         snap.forEach(function(child) {
           const u = child.key;
-          html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#222; padding:12px; border-radius:8px;">
-            <span style="font-weight:bold; font-size:1.1em;">${u}</span>
-            <div>
-              <button onclick="adminEditUser('${u}')" style="background:#e0a800; color:black; border:none; padding:8px 12px; border-radius:5px; margin-right:5px; cursor:pointer; font-weight:bold;">EDIT</button>
-              <button onclick="adminDeleteUser('${u}')" style="background:#dc3545; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">X</button>
+          const currentPass = child.val().password; // Pulls their exact password
+          
+          html += `<div style="margin-bottom:10px; background:#222; padding:12px; border-radius:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-weight:bold; font-size:1.1em;">${u}</span>
+              <div>
+                <button onclick="toggleEditUI('${u}')" style="background:#e0a800; color:black; border:none; padding:8px 12px; border-radius:5px; margin-right:5px; cursor:pointer; font-weight:bold;">EDIT</button>
+                <button onclick="adminDeleteUser('${u}')" style="background:#dc3545; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">X</button>
+              </div>
+            </div>
+            
+            <div id="edit-ui-${u}" style="display:none; margin-top:12px; padding-top:12px; border-top:1px solid #444; flex-direction:column; gap:8px;">
+              <span style="color:#aaa; font-size:0.8em;">Username:</span>
+              <input type="text" id="edit-name-${u}" value="${u}" style="width:100%; padding:10px; border-radius:5px; border:none; background:#333; color:white; box-sizing:border-box;">
+              
+              <span style="color:#aaa; font-size:0.8em; margin-top:5px;">Password:</span>
+              <input type="text" id="edit-pass-${u}" value="${currentPass}" style="width:100%; padding:10px; border-radius:5px; border:none; background:#333; color:white; box-sizing:border-box;">
+              
+              <button onclick="saveUserEdit('${u}')" style="background:#28a745; color:white; border:none; padding:10px; border-radius:5px; cursor:pointer; font-weight:bold; margin-top:8px;">SAVE CHANGES</button>
             </div>
           </div>`;
         });
         document.getElementById("manage-user-list").innerHTML = html;
       });
     }
+
     function closeManageUsersModal() { document.getElementById("manage-modal").style.display = "none"; }
 
-    function adminEditUser(oldName) {
-      if(oldName === "Voided") { alert("Cannot edit the primary admin account."); return; }
-      
-      let newName = prompt("Enter new username (leave blank to keep '" + oldName + "'):", oldName);
-      if (newName === null) return; // Cancelled
-      newName = newName.trim() || oldName;
+    function toggleEditUI(uName) {
+      if(uName === "Voided") { alert("Cannot edit the primary admin account."); return; }
+      const panel = document.getElementById("edit-ui-" + uName);
+      panel.style.display = (panel.style.display === "none") ? "flex" : "none";
+    }
 
-      let newPass = prompt("Enter new password for " + newName + ":");
-      if (newPass === null) return; // Cancelled
-      if (newPass.length < 2) { alert("Password too short."); return; }
+    function saveUserEdit(oldName) {
+      if(oldName === "Voided") return; // Hardcoded safety lock
+      
+      const newName = document.getElementById("edit-name-" + oldName).value.trim();
+      const newPass = document.getElementById("edit-pass-" + oldName).value.trim();
+
+      if (newName.length < 2 || newPass.length < 2) { 
+        alert("Username and Password must be at least 2 characters."); 
+        return; 
+      }
 
       if (newName !== oldName) {
-        // Move credentials to new username and delete old
+        // Move credentials to the new username and delete the old one
         db.ref("registered_users/" + newName).set({ password: newPass });
         db.ref("registered_users/" + oldName).remove();
-        db.ref("users/" + oldName).remove(); // Clear old online status/color
+        db.ref("users/" + oldName).remove(); // Clears their old online status/color
       } else {
+        // Just update the password
         db.ref("registered_users/" + oldName).update({ password: newPass });
       }
       alert("Credentials updated successfully!");
-      openManageUsersModal(); // Refresh list
+      openManageUsersModal(); // Refreshes the UI instantly
     }
 
     function adminDeleteUser(uName) {
