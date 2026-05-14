@@ -142,7 +142,16 @@
       <button class="btn" onclick="sendText()" style="background: #007bff; color: white; padding: 0 20px; height: 45px; border-radius: 20px;">SEND</button>
     </div>
 
-    <button id="nuke-btn" class="btn" onclick="nukeChat()" style="display: none; background: #900; color: white; width: 100%; margin-top: 15px; font-size: 0.7em; opacity: 0.5;">NUKE DATABASE</button>
+    <button id="nuke-btn" class="btn" onclick="nukeChat()" style="display: none; background: #900; color: white; width: 100%; margin-top: 15px; font-size: 0.7em; opacity: 0.5;">NUKE CHAT</button>
+  </div>
+
+  <div id="context-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; justify-content: center;" onclick="if(event.target===this) closeMenu()">
+    <div style="background: #222; width: 100%; padding: 20px; border-top-left-radius: 20px; border-top-right-radius: 20px; box-sizing: border-box; text-align: center;">
+      <div style="width: 40px; height: 5px; background: #555; border-radius: 5px; margin: 0 auto 15px auto;"></div>
+      <button class="btn" style="width:100%; background: #333; color: white; margin-bottom: 10px; padding: 15px;" onclick="copyMessage()">📋 Copy Text</button>
+      <button class="btn" id="delete-everyone-btn" style="width:100%; background: #dc3545; color: white; margin-bottom: 10px; padding: 15px;" onclick="deleteForEveryone()">🗑️ Delete Message</button>
+      <button class="btn" style="width:100%; background: #555; color: white; padding: 15px;" onclick="closeMenu()">Cancel</button>
+    </div>
   </div>
 
   <div id="register-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: center;">
@@ -216,11 +225,16 @@
     let isSpying = false;
     let userColors = {}; 
     
-    // Status Tracking State
+    // Status & Deletion Listeners
     let targetUser = "";
     let targetUserLastActive = 0;
     let statusRef = null;
     let statusCallback = null;
+    let removeListener = null;
+    
+    // Context Menu State
+    let activeMsgKey = null;
+    let activeMsgText = "";
     
     let pendingImg = null; let pendingAudio = null; let pendingVideo = null;
     let appLoadTime = Date.now(); 
@@ -231,6 +245,7 @@
     let isMicOff = false; let isCamOff = false; let isDeafened = false; let isLocalPreviewHidden = false;
     let controlsVisible = true; let isChatVisibleInCall = false; let currentFacingMode = "user";
     let attachMenuVisible = false;
+    let isFetchingLocation = false;
 
     // --- SECURE LOGIN LOGIC ---
     function checkPassword() {
@@ -271,7 +286,6 @@
       window.addEventListener("focus", function() { db.ref("users/" + currentUser + "/lastActive").set(Date.now()); });
       setInterval(function() { db.ref("users/" + currentUser + "/lastActive").set(Date.now()); }, 10000);
       
-      // Re-enable global seen/status loops
       setInterval(updateSeenIndicator, 30000);
       setInterval(updateLastSeenText, 30000);
       
@@ -288,6 +302,30 @@
 
     function setMyColor(hexCode) {
       db.ref("users/" + currentUser + "/color").set(hexCode);
+    }
+
+    // --- CONTEXT MENU (DELETE/COPY) ---
+    function openMenu(key, text, sender) {
+      activeMsgKey = key; activeMsgText = text || ""; 
+      // Admins can delete anything, users can only delete their own
+      document.getElementById("delete-everyone-btn").style.display = (sender === currentUser || currentUser === "Voided") ? "block" : "none";
+      document.getElementById("context-modal").style.display = "flex";
+    }
+    
+    function closeMenu() { document.getElementById("context-modal").style.display = "none"; }
+    
+    function copyMessage() {
+      if (!activeMsgText) { closeMenu(); return; }
+      const textArea = document.createElement("textarea");
+      textArea.value = activeMsgText; textArea.style.position = "fixed"; 
+      document.body.appendChild(textArea); textArea.focus(); textArea.select();
+      try { document.execCommand('copy'); alert("Copied!"); } catch (err) {}
+      document.body.removeChild(textArea); closeMenu();
+    }
+    
+    function deleteForEveryone() { 
+      if (activeMsgKey) db.ref("rooms/" + currentRoom + "/messages/" + activeMsgKey).remove(); 
+      closeMenu(); 
     }
 
     // --- ADMIN USER MANAGEMENT ---
@@ -388,7 +426,6 @@
         snap.forEach(function(child) {
           if (child.val().color) {
             userColors[child.key] = child.val().color;
-            // Update big geometric dots
             document.querySelectorAll('.user-dot-' + child.key).forEach(el => el.style.backgroundColor = child.val().color);
           }
         });
@@ -476,8 +513,9 @@
     function joinRoom(roomID, displayTitle, isSpyMode = false) {
       toggleSidebar();
       
-      // Wipe old listeners cleanly so messages don't break
+      // Clear old listeners
       db.ref("rooms/" + currentRoom).off();
+      if (removeListener) db.ref("rooms/" + currentRoom + "/messages").off("child_removed", removeListener);
       if (statusRef && statusCallback) statusRef.off("value", statusCallback);
       
       currentRoom = roomID;
@@ -496,7 +534,6 @@
         document.getElementById("call-init-btn").style.display = "block";
         document.getElementById("status-indicator").style.color = "#eee";
         
-        // If DM, extract their name and hook up live status tracking
         if (currentRoom.startsWith("dm_")) {
           let parts = currentRoom.split("_");
           targetUser = parts[1] === currentUser ? parts[2] : parts[1];
@@ -521,14 +558,17 @@
     function loadMessages() {
       const box = document.getElementById("chat-box");
       
+      // Render new messages
       db.ref("rooms/" + currentRoom + "/messages").limitToLast(50).on("child_added", function(snap) {
         const data = snap.val();
+        const key = snap.key;
         
         if (data.timestamp > appLoadTime && data.user !== currentUser && !isSpying) {
           triggerPushNotification(data.user, "New message in " + currentRoom);
         }
 
         const div = document.createElement("div");
+        div.id = "msg-" + key;
         div.className = "bubble";
         div.dataset.sender = data.user;
         div.dataset.timestamp = data.timestamp;
@@ -538,15 +578,21 @@
         div.style.background = isMe ? "#007bff" : "#444";
         
         const dotColor = userColors[data.user] || "#ffffff";
+        const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '&quot;') : "";
         
-        // BUG FIX: Using a solid inline-block CSS circle instead of a text character for perfect alignment
+        // FIX: The color dot is pulled out of the opacity block, and the delete menu button is added back!
         let html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">' +
-                      '<span style="font-size:0.6em; opacity:0.6; display:flex; align-items:center;"><span class="user-dot-' + data.user + '" style="display:inline-block; width:14px; height:14px; border-radius:50%; background-color:' + dotColor + '; margin-right:6px;"></span>' + data.user + '</span>' +
+                      '<div style="display:flex; align-items:center;">' +
+                        '<span class="user-dot-' + data.user + '" style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:' + dotColor + '; margin-right:6px;"></span>' +
+                        '<span style="font-size:0.6em; opacity:0.6;">' + data.user + '</span>' +
+                      '</div>' +
+                      '<button style="background:none; border:none; color:inherit; opacity:0.6; font-size:1.3em; cursor:pointer; padding: 0 5px;" onclick="openMenu(\'' + key + '\', \'' + safeText + '\', \'' + data.user + '\')">⋮</button>' +
                     '</div>';
                     
         if (data.text) html += '<span style="white-space: pre-wrap;">' + data.text + '</span>';
         if (data.image) html += '<img src="' + data.image + '" class="chat-img" style="width:100%; border-radius:10px; margin-top:5px; transition: 0.3s; cursor: pointer;">';
-        if (data.audio) html += '<audio controls src="' + data.audio + '" style="width:100%; margin-top: 5px; height: 35px;"></audio>';
+        // FIX: Audio tag updated to prevent squishing on iOS
+        if (data.audio) html += '<audio controls src="' + data.audio + '" style="width:100%; min-width:220px; margin-top:5px; border-radius:8px;"></audio>';
         if (data.video) html += '<video controls src="' + data.video + '" style="width:100%; border-radius:10px; margin-top:5px;"></video>';
         
         div.innerHTML = html;
@@ -554,7 +600,14 @@
         box.scrollTop = box.scrollHeight;
         
         toggleGlobalBlur();
-        updateSeenIndicator(); // THE CRITICAL MISSING FUNCTION IS BACK
+        updateSeenIndicator(); 
+      });
+
+      // Remove deleted messages in real-time
+      removeListener = db.ref("rooms/" + currentRoom + "/messages").on("child_removed", function(snap) {
+        const el = document.getElementById("msg-" + snap.key);
+        if (el) el.remove();
+        updateSeenIndicator();
       });
     }
 
@@ -663,12 +716,18 @@
 
     function sendLocation() {
       closeAttachMenu();
+      if (isFetchingLocation) return;
       if (navigator.geolocation) {
+        isFetchingLocation = true;
         navigator.geolocation.getCurrentPosition(function(position) {
           const lat = position.coords.latitude; const lon = position.coords.longitude;
           const mapLink = "📍 Location Dropped:\nhttps://www.google.com/maps?q=" + lat + "," + lon;
           db.ref("rooms/" + currentRoom + "/messages").push({ user: currentUser, text: mapLink, timestamp: Date.now() });
-        }, function() { alert("Could not access location."); });
+          isFetchingLocation = false;
+        }, function() { 
+          alert("Could not access location."); 
+          isFetchingLocation = false; 
+        });
       }
     }
 
@@ -762,7 +821,13 @@
       if (triggerDelete) db.ref('rooms/' + currentRoom + '/call').remove();
     }
     
-    function nukeChat() { if (confirm("Delete everything in this room?")) { db.ref("rooms/" + currentRoom).remove(); location.reload(); } }
+    // FIX: Just clears the messages path and UI without reloading the whole page
+    function nukeChat() { 
+      if (confirm("Delete everything in this room?")) { 
+        db.ref("rooms/" + currentRoom + "/messages").remove(); 
+        document.getElementById("chat-box").innerHTML = "";
+      } 
+    }
   </script>
 </body>
 </html>
