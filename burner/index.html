@@ -69,6 +69,12 @@
       <button onclick="toggleSidebar()" style="background: none; border: none; color: white; font-size: 1.5em; cursor: pointer;">×</button>
     </div>
     
+    <div class="sidebar-category">Profile</div>
+    <div class="sidebar-item" style="justify-content: space-between;">
+      <span>🎨 Name Color</span>
+      <input type="color" id="myColorPicker" onchange="setMyColor(this.value)" style="border:none; width:35px; height:35px; cursor:pointer; background:transparent; border-radius: 50%;">
+    </div>
+
     <div class="sidebar-category">Public</div>
     <div class="sidebar-item" onclick="joinRoom('global', '🌍 Global Chat')">🌍 Global Chat</div>
     
@@ -78,6 +84,7 @@
     <div id="admin-controls-section" style="display: none;">
       <div class="sidebar-category" style="color: #00ccff;">⚙️ Admin Controls</div>
       <div class="sidebar-item" onclick="openRegisterModal()">➕ Register New User</div>
+      <div class="sidebar-item" onclick="openManageUsersModal()">🛠️ Manage Users</div>
     </div>
 
     <div id="admin-spy-section" style="display: none;">
@@ -144,8 +151,15 @@
     <input type="text" id="newPassword" placeholder="New Password" style="margin-bottom: 25px; width: 70%; text-align: center; padding: 15px; font-size: 1.1em; border-radius: 8px; border: none;">
     <div style="display: flex;">
       <button class="btn" onclick="closeRegisterModal()" style="background: #555; color: white; padding: 15px 25px; margin-right: 20px;">CANCEL</button>
-      <button class="btn" onclick="registerUser()" style="background: #007bff; color: white; padding: 15px 30px;">CREATE ACCOUNT</button>
+      <button class="btn" onclick="registerUser()" style="background: #007bff; color: white; padding: 15px 30px;">CREATE</button>
     </div>
+  </div>
+
+  <div id="manage-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 200; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 10vh;">
+    <h2 style="color: white; margin-bottom: 20px;">Manage Network Users</h2>
+    <div id="manage-user-list" style="width: 85%; max-height: 60vh; overflow-y: auto; margin-bottom: 20px;">
+      </div>
+    <button class="btn" onclick="closeManageUsersModal()" style="background: #555; color: white; padding: 15px 40px;">CLOSE</button>
   </div>
 
   <div id="preview-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 100; flex-direction: column; align-items: center; justify-content: center;">
@@ -204,6 +218,7 @@
     let messageListener = null;
     let typingListener = null;
     let callListener = null;
+    let userColors = {}; // Stores all profile colors
     
     let pendingImg = null; let pendingAudio = null; let pendingVideo = null;
     let appLoadTime = Date.now(); 
@@ -222,21 +237,16 @@
       
       if (userVal.length < 2) { alert("Username too short."); return; }
 
-      // Hardcoded Admin Override to bootstrap the database
       if (userVal === "Voided" && passVal === "Voided5930") {
         db.ref("registered_users/Voided").set({ password: "Voided5930" });
-        proceedToApp("Voided");
-        return;
+        proceedToApp("Voided"); return;
       }
       
-      // Hardcoded Cemiyah Override to bootstrap the database
       if (userVal === "Cemiyah" && passVal === "cemiyah123") {
         db.ref("registered_users/Cemiyah").set({ password: "cemiyah123" });
-        proceedToApp("Cemiyah");
-        return;
+        proceedToApp("Cemiyah"); return;
       }
 
-      // Check dynamic registered users
       db.ref("registered_users/" + userVal).once("value").then(function(snap) {
         if (snap.exists() && snap.val().password === passVal) {
           proceedToApp(userVal);
@@ -251,7 +261,12 @@
       document.getElementById("login-screen").style.display = "none";
       document.getElementById("chat-screen").style.display = "block";
       
-      db.ref("users/" + currentUser).set({ lastActive: Date.now() });
+      // Load user's saved color
+      db.ref("users/" + currentUser + "/color").once("value").then(function(snap) {
+        if(snap.exists()) document.getElementById("myColorPicker").value = snap.val();
+      });
+
+      db.ref("users/" + currentUser).update({ lastActive: Date.now() });
       window.addEventListener("focus", function() { db.ref("users/" + currentUser + "/lastActive").set(Date.now()); });
       setInterval(function() { db.ref("users/" + currentUser + "/lastActive").set(Date.now()); }, 10000);
       
@@ -267,46 +282,107 @@
       joinRoom("global", "🌍 Global Chat");
     }
 
-    // --- ADMIN USER REGISTRATION ---
+    // --- PROFILE COLOR LOGIC ---
+    function setMyColor(hexCode) {
+      db.ref("users/" + currentUser + "/color").set(hexCode);
+    }
+
+    // --- ADMIN USER REGISTRATION & MANAGEMENT ---
     function openRegisterModal() {
       document.getElementById("register-modal").style.display = "flex";
       toggleSidebar();
     }
-
     function closeRegisterModal() {
       document.getElementById("register-modal").style.display = "none";
-      document.getElementById("newUsername").value = "";
-      document.getElementById("newPassword").value = "";
+      document.getElementById("newUsername").value = ""; document.getElementById("newPassword").value = "";
     }
-
     function registerUser() {
       const nu = document.getElementById("newUsername").value.trim();
       const np = document.getElementById("newPassword").value.trim();
-      
-      if (nu.length < 2 || np.length < 2) {
-        alert("Username and Password must be at least 2 characters.");
-        return;
-      }
-      
+      if (nu.length < 2 || np.length < 2) { alert("Username and Password must be at least 2 characters."); return; }
       db.ref("registered_users/" + nu).set({ password: np });
-      alert("User '" + nu + "' has been registered successfully!");
+      alert("User '" + nu + "' has been registered!");
       closeRegisterModal();
     }
+
+    function openManageUsersModal() {
+      document.getElementById("manage-modal").style.display = "flex";
+      toggleSidebar();
+      
+      // Fetch all registered users and build UI list
+      db.ref("registered_users").once("value", function(snap) {
+        let html = "";
+        snap.forEach(function(child) {
+          const u = child.key;
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; background:#222; padding:12px; border-radius:8px;">
+            <span style="font-weight:bold; font-size:1.1em;">${u}</span>
+            <div>
+              <button onclick="adminEditUser('${u}')" style="background:#e0a800; color:black; border:none; padding:8px 12px; border-radius:5px; margin-right:5px; cursor:pointer; font-weight:bold;">EDIT</button>
+              <button onclick="adminDeleteUser('${u}')" style="background:#dc3545; color:white; border:none; padding:8px 15px; border-radius:5px; cursor:pointer; font-weight:bold;">X</button>
+            </div>
+          </div>`;
+        });
+        document.getElementById("manage-user-list").innerHTML = html;
+      });
+    }
+    function closeManageUsersModal() { document.getElementById("manage-modal").style.display = "none"; }
+
+    function adminEditUser(oldName) {
+      if(oldName === "Voided") { alert("Cannot edit the primary admin account."); return; }
+      
+      let newName = prompt("Enter new username (leave blank to keep '" + oldName + "'):", oldName);
+      if (newName === null) return; // Cancelled
+      newName = newName.trim() || oldName;
+
+      let newPass = prompt("Enter new password for " + newName + ":");
+      if (newPass === null) return; // Cancelled
+      if (newPass.length < 2) { alert("Password too short."); return; }
+
+      if (newName !== oldName) {
+        // Move credentials to new username and delete old
+        db.ref("registered_users/" + newName).set({ password: newPass });
+        db.ref("registered_users/" + oldName).remove();
+        db.ref("users/" + oldName).remove(); // Clear old online status/color
+      } else {
+        db.ref("registered_users/" + oldName).update({ password: newPass });
+      }
+      alert("Credentials updated successfully!");
+      openManageUsersModal(); // Refresh list
+    }
+
+    function adminDeleteUser(uName) {
+      if(uName === "Voided") { alert("Cannot delete the primary admin account."); return; }
+      if (confirm("Are you sure you want to PERMANENTLY DELETE user '" + uName + "'?")) {
+        db.ref("registered_users/" + uName).remove();
+        db.ref("users/" + uName).remove();
+        openManageUsersModal(); // Refresh list
+      }
+    }
+
 
     // --- SIDEBAR LOGIC ---
     function toggleSidebar() {
       const sidebar = document.getElementById("sidebar");
       const overlay = document.getElementById("sidebar-overlay");
       if (sidebar.style.left === "0px") {
-        sidebar.style.left = "-260px";
-        overlay.style.display = "none";
+        sidebar.style.left = "-260px"; overlay.style.display = "none";
       } else {
-        sidebar.style.left = "0px";
-        overlay.style.display = "block";
+        sidebar.style.left = "0px"; overlay.style.display = "block";
       }
     }
 
     function setupSidebar() {
+      // Also pulls Colors for the chat dots
+      db.ref("users").on("value", function(snap) {
+        snap.forEach(function(child) {
+          if (child.val().color) {
+            userColors[child.key] = child.val().color;
+            // Instantly update any visible dots for this user in the chat
+            document.querySelectorAll('.user-dot-' + child.key).forEach(el => el.style.color = child.val().color);
+          }
+        });
+      });
+
       db.ref("registered_users").on("value", function(snap) {
         const userList = document.getElementById("user-list");
         userList.innerHTML = "";
@@ -371,11 +447,8 @@
       }
 
       loadMessages();
-      setupTypingIndicator(); // <-- Moved this out so it runs in Spy Mode too
-      
-      if (!isSpying) {
-        listenForCalls();
-      }
+      setupTypingIndicator(); 
+      if (!isSpying) listenForCalls();
     }
 
     // --- CHAT LOGIC ---
@@ -396,8 +469,11 @@
         div.style.alignSelf = isMe ? "flex-end" : "flex-start";
         div.style.background = isMe ? "#007bff" : "#444";
         
+        // Grab their color or default to white
+        const dotColor = userColors[data.user] || "#ffffff";
+        
         let html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">' +
-                      '<span style="font-size:0.6em; opacity:0.6;">' + data.user + '</span>' +
+                      '<span style="font-size:0.6em; opacity:0.6;"><span class="user-dot-' + data.user + '" style="color:' + dotColor + '; margin-right:3px; font-size:1.2em;">●</span>' + data.user + '</span>' +
                     '</div>';
                     
         if (data.text) html += '<span style="white-space: pre-wrap;">' + data.text + '</span>';
@@ -425,9 +501,8 @@
       let typingTimeout;
       const inputField = document.getElementById("msgInput");
       
-      // Using .oninput prevents duplicate listeners when switching rooms
       inputField.oninput = function() {
-        if(isSpying) return; // Keeps you completely invisible
+        if(isSpying) return; 
         db.ref("rooms/" + currentRoom + "/typing/" + currentUser).set(inputField.value);
         clearTimeout(typingTimeout);
         typingTimeout = setTimeout(function() { db.ref("rooms/" + currentRoom + "/typing/" + currentUser).remove(); }, 3000);
@@ -436,20 +511,15 @@
       typingListener = db.ref("rooms/" + currentRoom + "/typing").on("value", function(snap) {
         const data = snap.val() || {};
         
-        // Filter out yourself, and only show people who actually have text typed out
-        let typers = Object.keys(data).filter(function(u) { 
-          return u !== currentUser && data[u] && data[u].trim().length > 0; 
-        });
+        let typers = Object.keys(data).filter(function(u) { return u !== currentUser && data[u] && data[u].trim().length > 0; });
         
         if(typers.length > 0) {
           document.getElementById("typing-indicator").style.display = "block";
           
           if (currentUser === "Voided") {
-            // ADMIN OVERRIDE: See exactly what they are typing live
             let liveTexts = typers.map(function(u) { return u + " is typing: " + data[u]; });
             document.getElementById("typing-indicator").innerText = "👁️ " + liveTexts.join(" | ");
           } else {
-            // NORMAL USER: Just see the standard notification
             document.getElementById("typing-indicator").innerText = typers.join(", ") + " is typing...";
           }
           
