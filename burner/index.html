@@ -371,8 +371,9 @@
       }
 
       loadMessages();
+      setupTypingIndicator(); // <-- Moved this out so it runs in Spy Mode too
+      
       if (!isSpying) {
-        setupTypingIndicator();
         listenForCalls();
       }
     }
@@ -424,14 +425,13 @@
       let typingTimeout;
       const inputField = document.getElementById("msgInput");
       
-      // Send the actual text being typed to the database
-      inputField.addEventListener("input", function() {
-        if(isSpying) return;
+      // Using .oninput prevents duplicate listeners when switching rooms
+      inputField.oninput = function() {
+        if(isSpying) return; // Keeps you completely invisible
         db.ref("rooms/" + currentRoom + "/typing/" + currentUser).set(inputField.value);
         clearTimeout(typingTimeout);
-        // Clear typing indicator after 3 seconds of no typing
         typingTimeout = setTimeout(function() { db.ref("rooms/" + currentRoom + "/typing/" + currentUser).remove(); }, 3000);
-      });
+      };
 
       typingListener = db.ref("rooms/" + currentRoom + "/typing").on("value", function(snap) {
         const data = snap.val() || {};
