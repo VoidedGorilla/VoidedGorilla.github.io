@@ -230,8 +230,8 @@
     let targetUserLastActive = 0;
     
     // STRICT LISTENER MANAGEMENT
-    let messageListener = null;
-    let removeListener = null;
+    let activeQuery = null;
+    let activeRemoveQuery = null;
     let typingListener = null;
     let statusRef = null;
     let statusCallback = null;
@@ -491,9 +491,10 @@
       if (existing) existing.remove();
 
       const box = document.getElementById("chat-box");
-      const lastMsg = box.lastElementChild;
-
-      if (!lastMsg || !lastMsg.classList.contains("bubble")) return;
+      const bubbles = box.getElementsByClassName("bubble");
+      if (bubbles.length === 0) return; // FIX: Protects against empty chat errors
+      
+      const lastMsg = bubbles[bubbles.length - 1]; // FIX: Safely grabs the true last chat bubble, ignoring indicator div
 
       if (lastMsg.dataset.sender === currentUser) {
         const msgTime = parseInt(lastMsg.dataset.timestamp);
@@ -518,9 +519,9 @@
     function joinRoom(roomID, displayTitle, isSpyMode = false) {
       toggleSidebar();
       
-      // Explicitly detach all exact old listeners to prevent cross-room ghosting
-      if (messageListener) db.ref("rooms/" + currentRoom + "/messages").off("child_added", messageListener);
-      if (removeListener) db.ref("rooms/" + currentRoom + "/messages").off("child_removed", removeListener);
+      // FIX: PERFECTLY KILLS OLD LISTENERS BEFORE BINDING NEW ONES
+      if (activeQuery) activeQuery.off();
+      if (activeRemoveQuery) activeRemoveQuery.off();
       if (typingListener) db.ref("rooms/" + currentRoom + "/typing").off("value", typingListener);
       if (statusRef && statusCallback) statusRef.off("value", statusCallback);
       if (callListener) db.ref("rooms/" + currentRoom + "/call").off("value", callListener);
@@ -565,7 +566,9 @@
     function loadMessages() {
       const box = document.getElementById("chat-box");
       
-      messageListener = db.ref("rooms/" + currentRoom + "/messages").limitToLast(50).on("child_added", function(snap) {
+      // FIX: Attach exactly tracked Query Listeners so they can be turned off perfectly
+      activeQuery = db.ref("rooms/" + currentRoom + "/messages").limitToLast(50);
+      activeQuery.on("child_added", function(snap) {
         const data = snap.val();
         const key = snap.key;
         
@@ -584,11 +587,11 @@
         div.style.background = isMe ? "#007bff" : "#444";
         
         const dotColor = userColors[data.user] || "#ffffff";
-        const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ') : "";
+        const safeText = data.text ? data.text.replace(/'/g, "\\'").replace(/"/g, '"').replace(/\n/g, ' ') : "";
         
         let html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">' +
                       '<div style="display:flex; align-items:center;">' +
-                        '<span class="user-dot" data-user="' + data.user + '" style="display:inline-block; width:16px; height:16px; border-radius:50%; background-color:' + dotColor + '; margin-right:8px;"></span>' +
+                        '<span class="user-dot" data-user="' + data.user + '" style="display:inline-block; width:18px; height:18px; border-radius:50%; background-color:' + dotColor + '; margin-right:8px; border: 1px solid rgba(255,255,255,0.2);"></span>' +
                         '<span style="font-size:0.6em; opacity:0.6;">' + data.user + '</span>' +
                       '</div>' +
                       '<button style="background:none; border:none; color:inherit; opacity:0.6; font-size:1.3em; cursor:pointer; padding: 0 5px;" onclick="openMenu(\'' + key + '\', \'' + safeText + '\', \'' + data.user + '\')">⋮</button>' +
@@ -607,7 +610,8 @@
         updateSeenIndicator(); 
       });
 
-      removeListener = db.ref("rooms/" + currentRoom + "/messages").on("child_removed", function(snap) {
+      activeRemoveQuery = db.ref("rooms/" + currentRoom + "/messages");
+      activeRemoveQuery.on("child_removed", function(snap) {
         const el = document.getElementById("msg-" + snap.key);
         if (el) el.remove();
         updateSeenIndicator();
