@@ -241,17 +241,21 @@
     document.getElementById('gNum').innerText = g9;
     document.getElementById('bNum').innerText = b9;
 
-    let r = Math.round((r9 / 9) * 255);
-    let g = Math.round((g9 / 9) * 255);
-    let b = Math.round((b9 / 9) * 255);
+    // Calculate the snapped Gorilla Tag colors
+    let cr = Math.round((r9 / 9) * 255);
+    let cg = Math.round((g9 / 9) * 255);
+    let cb = Math.round((b9 / 9) * 255);
 
-    draw(dCtx, r, g, b);
-    draw(cCtx, r, g, b);
-    document.getElementById('hexInput').value = rgbToHex(r, g, b);
+    // Always draw the closest match
+    draw(cCtx, cr, cg, cb); 
+
+    // Only update the Desired canvas and Hex input IF the user is dragging sliders.
+    // If they are typing in the hex box, we leave the exact hex and left canvas alone.
+    if (document.activeElement.id !== 'hexInput') {
+      draw(dCtx, cr, cg, cb);
+      document.getElementById('hexInput').value = rgbToHex(cr, cg, cb);
+    }
   }
-
-  // Initial load sync
-  furImg.onload = cyberImg.onload = () => sync();
 
   function updateFromHex() {
     let hex = document.getElementById('hexInput').value.replace('#', '');
@@ -259,10 +263,17 @@
       let r = parseInt(hex.substring(0, 2), 16);
       let g = parseInt(hex.substring(2, 4), 16);
       let b = parseInt(hex.substring(4, 6), 16);
+      
+      // Draw the EXACT desired color on the left canvas
+      draw(dCtx, r, g, b);
+
+      // Snap the sliders to the closest Gorilla Tag values
       document.getElementById('rS').value = Math.round(r / 255 * 9);
       document.getElementById('gS').value = Math.round(g / 255 * 9);
       document.getElementById('bS').value = Math.round(b / 255 * 9);
-      sync();
+      
+      // Update the numbers and right canvas
+      sync(); 
     }
   }
 
