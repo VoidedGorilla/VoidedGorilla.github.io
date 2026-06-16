@@ -80,9 +80,6 @@
     canvas {
       border: 3px solid #000;
       border-radius: 10px;
-      width: 180px;
-      height: 180px;
-      cursor: crosshair;
       background: #000;
     }
 
@@ -114,6 +111,7 @@
       font-family: monospace;
       text-align: center;
       width: 120px;
+      font-size: 16px;
     }
 
     .slider { 
@@ -128,7 +126,26 @@
     #gS::-webkit-slider-thumb { background: #1a801a; }
     #bS::-webkit-slider-thumb { background: #1a1a80; }
 
-    .save-slots { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+    /* Paste Tool Section */
+    .paste-section {
+      margin-top: 30px;
+      background: #252525;
+      border: 2px dashed #555;
+      border-radius: 15px;
+      padding: 20px;
+    }
+    
+    #pasteCanvas {
+      width: 100%;
+      max-width: 400px;
+      min-height: 100px;
+      border: 1px solid #444;
+      cursor: crosshair;
+      background: #1a1a1a;
+      object-fit: contain;
+    }
+
+    .save-slots { display: flex; justify-content: center; gap: 12px; margin-top: 30px; }
     .slot { width: 100px; background: #121212; padding: 10px; border-radius: 10px; border: 2px solid #444; cursor: pointer; }
     .slot.selected { border-color: #fff; background: #2a2a2a; }
     .slot-preview { width: 100%; height: 40px; border-radius: 5px; margin-bottom: 8px; border: 1px solid #000; }
@@ -169,11 +186,21 @@
       <input type="text" id="hexInput" placeholder="#FFFFFF" maxlength="7" oninput="updateFromHex()">
     </div>
 
-    <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync()">
-    <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="sync()">
-    <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="sync()">
+    <input type="range" id="rS" class="slider" min="0" max="9" value="0" oninput="sync('slider')">
+    <input type="range" id="gS" class="slider" min="0" max="9" value="0" oninput="sync('slider')">
+    <input type="range" id="bS" class="slider" min="0" max="9" value="0" oninput="sync('slider')">
 
     <div class="disclaimer">*Note: 0 0 0 appears as a shiny black in-game due to material shaders.</div>
+
+    <div class="paste-section">
+      <h3 style="margin-top:0;">Image Color Picker</h3>
+      <p style="font-size: 13px; color: #aaa;">Click anywhere on the page and press <b>Ctrl+V</b> to paste an image. Hover over the image to live-pick colors!</p>
+      <canvas id="pasteCanvas"></canvas>
+      <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 15px;">
+        <div id="hoverPreviewBox" style="width: 30px; height: 30px; border: 2px solid #fff; border-radius: 5px; background: #000;"></div>
+        <span id="hoverHexText" style="font-family: monospace; color: #aaa; font-size: 16px;">#000000</span>
+      </div>
+    </div>
 
     <div style="margin-top: 30px;">
       <h3>SAVED COLORS</h3>
@@ -207,51 +234,53 @@
     currentFurType = type;
     document.getElementById('optDefault').classList.toggle('active', type === 'default');
     document.getElementById('optCyber').classList.toggle('active', type === 'cyber');
-    sync();
+    sync('slider');
   }
 
   function draw(ctx, r, g, b) {
     ctx.clearRect(0, 0, 200, 200);
     const activeImg = currentFurType === 'default' ? furImg : cyberImg;
-  
-    // 1. Draw the texture first
+    
+    // Fallback if the image is missing or broken, draw a solid color instead
+    if (!activeImg.complete || activeImg.naturalHeight === 0) {
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(0, 0, 200, 200);
+        ctx.fillStyle = (r+g+b > 380) ? 'black' : 'white';
+        ctx.font = '14px Arial';
+        ctx.fillText('Texture Missing.', 45, 95);
+        ctx.fillText('Showing Solid Color', 35, 115);
+        return;
+    }
+
     ctx.drawImage(activeImg, 0, 0, 200, 200);
-  
-    // 2. Use 'source-atop' to fill only the existing pixels with color
-    // This acts like a "clip" so the color only goes where the fur is
     ctx.globalCompositeOperation = 'source-atop';
-    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.8)`; // 0.8 opacity keeps some detail
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.8)`;
     ctx.fillRect(0, 0, 200, 200);
-  
-    // 3. Use 'multiply' to bring back the shadows and fur details
     ctx.globalCompositeOperation = 'multiply';
     ctx.drawImage(activeImg, 0, 0, 200, 200);
-  
-    // 4. Reset to normal for the next frame
     ctx.globalCompositeOperation = 'source-over';
   }
 
+  function sync(source) {
+    let r9 = parseInt(document.getElementById('rS').value) || 0;
+    let g9 = parseInt(document.getElementById('gS').value) || 0;
+    let b9 = parseInt(document.getElementById('bS').value) || 0;
 
-  function sync() {
-    let r9 = document.getElementById('rS').value;
-    let g9 = document.getElementById('gS').value;
-    let b9 = document.getElementById('bS').value;
-
+    // Update big numbers
     document.getElementById('rNum').innerText = r9;
     document.getElementById('gNum').innerText = g9;
     document.getElementById('bNum').innerText = b9;
 
-    // Calculate the snapped Gorilla Tag colors
+    // Calculate snapped values
     let cr = Math.round((r9 / 9) * 255);
     let cg = Math.round((g9 / 9) * 255);
     let cb = Math.round((b9 / 9) * 255);
 
-    // Always draw the closest match
-    draw(cCtx, cr, cg, cb); 
+    // Right Canvas ALWAYS updates to show the closest match
+    draw(cCtx, cr, cg, cb);
 
-    // Only update the Desired canvas and Hex input IF the user is dragging sliders.
-    // If they are typing in the hex box, we leave the exact hex and left canvas alone.
-    if (document.activeElement.id !== 'hexInput') {
+    // If we moved the sliders, the desired canvas and hex should match the sliders exactly
+    if (source === 'slider') {
       draw(dCtx, cr, cg, cb);
       document.getElementById('hexInput').value = rgbToHex(cr, cg, cb);
     }
@@ -264,16 +293,16 @@
       let g = parseInt(hex.substring(2, 4), 16);
       let b = parseInt(hex.substring(4, 6), 16);
       
-      // Draw the EXACT desired color on the left canvas
+      // Draw exact desired color on left
       draw(dCtx, r, g, b);
 
-      // Snap the sliders to the closest Gorilla Tag values
+      // Snap sliders to closest
       document.getElementById('rS').value = Math.round(r / 255 * 9);
       document.getElementById('gS').value = Math.round(g / 255 * 9);
       document.getElementById('bS').value = Math.round(b / 255 * 9);
       
-      // Update the numbers and right canvas
-      sync(); 
+      // Update right canvas
+      sync('hex');
     }
   }
 
@@ -281,6 +310,69 @@
     return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
   }
 
+  // --- NEW: PASTE TO COLOR PICK LOGIC ---
+  const pasteCanvas = document.getElementById('pasteCanvas');
+  const pCtx = pasteCanvas.getContext('2d', { willReadFrequently: true });
+  
+  // Draw initial placeholder text
+  pasteCanvas.width = 400;
+  pasteCanvas.height = 150;
+  pCtx.fillStyle = '#1a1a1a';
+  pCtx.fillRect(0, 0, 400, 150);
+  pCtx.fillStyle = '#555';
+  pCtx.font = '16px Arial';
+  pCtx.textAlign = 'center';
+  pCtx.fillText('Awaiting pasted image...', 200, 80);
+
+  // Listen for Ctrl+V
+  window.addEventListener('paste', e => {
+    const items = e.clipboardData.items;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const blob = item.getAsFile();
+        const img = new Image();
+        img.onload = () => {
+          // Resize canvas to match image ratio
+          const maxWidth = 400;
+          const scale = Math.min(1, maxWidth / img.width);
+          pasteCanvas.width = img.width * scale;
+          pasteCanvas.height = img.height * scale;
+          pCtx.drawImage(img, 0, 0, pasteCanvas.width, pasteCanvas.height);
+        };
+        img.src = URL.createObjectURL(blob);
+        break;
+      }
+    }
+  });
+
+  // Listen for mouse hover on the pasted image
+  pasteCanvas.addEventListener('mousemove', e => {
+    const rect = pasteCanvas.getBoundingClientRect();
+    const scaleX = pasteCanvas.width / rect.width;
+    const scaleY = pasteCanvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    try {
+      const pixel = pCtx.getImageData(x, y, 1, 1).data;
+      if (pixel[3] === 0) return; // Ignore transparent pixels
+      
+      const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+      
+      // Update small hover preview
+      document.getElementById('hoverPreviewBox').style.backgroundColor = hex;
+      document.getElementById('hoverHexText').innerText = hex;
+
+      // Automatically live-update the main calculators!
+      document.getElementById('hexInput').value = hex;
+      updateFromHex();
+      
+    } catch (err) {
+      // Ignored: mostly catches security errors if someone pastes a tainted URL instead of a raw image
+    }
+  });
+
+  // Save Slot Logic
   function selectSlot(i) {
     document.querySelectorAll('.slot').forEach(s => s.classList.remove('selected'));
     document.getElementById(`slot${i}`).classList.add('selected');
@@ -289,7 +381,7 @@
       document.getElementById('rS').value = savedColors[i].r;
       document.getElementById('gS').value = savedColors[i].g;
       document.getElementById('bS').value = savedColors[i].b;
-      sync();
+      sync('slider');
     }
   }
 
@@ -305,7 +397,13 @@
     slot.querySelector('.slot-preview').style.backgroundColor = `rgb(${r},${g},${b})`;
     slot.innerHTML = `<div class="slot-preview" style="background:rgb(${r},${g},${b})"></div>${r9} ${g9} ${b9}`;
   }
-</script>
 
+  // Initial load sync
+  furImg.onload = cyberImg.onload = () => sync('slider');
+  
+  // Failsafe if images don't load within 500ms, force a sync anyway
+  setTimeout(() => sync('slider'), 500);
+
+</script>
 </body>
 </html>
