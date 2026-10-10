@@ -14,8 +14,6 @@
     --text-muted: #8e9297;
     --accent: #5865f2;
     --accent-hover: #4752c4;
-    --danger: #ed4245;
-    --danger-hover: #c9383b;
   }
   
   body {
@@ -36,13 +34,13 @@
     padding: 2rem;
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-    max-width: 900px;
+    max-width: 1000px;
     width: 100%;
     display: flex;
     gap: 2rem;
   }
   
-  @media (max-width: 768px) {
+  @media (max-width: 800px) {
     .container { flex-direction: column; }
   }
   
@@ -50,7 +48,8 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: 1rem;
+    min-width: 0;
   }
   
   h2 {
@@ -64,72 +63,115 @@
   .instruction {
     font-size: 0.85rem;
     color: var(--text-muted);
-    margin-top: -0.75rem;
+    margin-top: -0.5rem;
   }
   
-  label {
-    display: block;
-    margin-bottom: 0.4rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: #b9bbbe;
-  }
-  
-  textarea {
-    width: 100%;
-    height: 100px;
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     background: var(--bg-input);
+    padding: 0.75rem;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    align-items: center;
+  }
+
+  .tool-group {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding-right: 0.75rem;
+    border-right: 1px solid var(--border-color);
+  }
+
+  .tool-group:last-child {
+    border-right: none;
+  }
+
+  .tool-label {
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-right: 0.2rem;
+  }
+  
+  .format-btn {
+    background: var(--bg-panel);
+    color: var(--text-main);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    color: var(--text-main);
-    padding: 0.75rem;
-    resize: vertical;
-    box-sizing: border-box;
-    font-family: inherit;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.1s;
+  }
+
+  .format-btn:hover {
+    background: var(--text-muted);
+    color: #fff;
   }
   
-  textarea:focus, select:focus {
+  .color-btn {
+    width: 22px;
+    height: 22px;
+    border: 2px solid var(--bg-panel);
+    cursor: pointer;
+    padding: 0;
+    transition: transform 0.1s, border-color 0.1s;
+  }
+
+  #fg-tools .color-btn { border-radius: 50%; }
+  #bg-tools .color-btn { border-radius: 4px; }
+
+  .color-btn:hover {
+    transform: scale(1.15);
+    border-color: #fff;
+  }
+  
+  .editor-box {
+    width: 100%;
+    min-height: 250px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 6px 6px;
+    color: var(--text-main);
+    padding: 1rem;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 1rem;
+    overflow-y: auto;
     outline: none;
+    white-space: pre-wrap;
+  }
+  
+  .editor-box:focus {
     border-color: #7289da;
   }
   
-  .controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-  
-  select {
-    width: 100%;
-    background: var(--bg-input);
-    color: var(--text-main);
+  .preview-container {
+    background: #202225;
     border: 1px solid var(--border-color);
-    padding: 0.5rem;
-    border-radius: 4px;
-    font-size: 0.9rem;
-    cursor: pointer;
+    border-radius: 6px;
+    padding: 1rem;
+    min-height: 250px;
+    flex-grow: 1;
+    overflow-y: auto;
+    position: relative;
   }
-  
-  .checkbox-group {
-    display: flex;
-    gap: 1.5rem;
-    align-items: center;
-    background: var(--bg-input);
-    padding: 0.75rem;
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-  }
-  
-  .checkbox-group label {
+
+  .preview-code {
     margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    font-weight: normal;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.9rem;
+    color: #b9bbbe;
+    white-space: pre-wrap;
+    word-wrap: break-word;
   }
   
-  button {
+  .copy-btn {
     background: var(--accent);
     color: white;
     border: none;
@@ -140,213 +182,242 @@
     transition: background 0.2s;
     font-size: 0.95rem;
     width: 100%;
+    margin-top: auto;
   }
   
-  button:hover { background: var(--accent-hover); }
-  .btn-danger { background: var(--danger); }
-  .btn-danger:hover { background: var(--danger-hover); }
-  
-  .preview-box {
-    background: #202225; /* Discord codeblock background */
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 1rem;
-    min-height: 180px;
-    white-space: pre-wrap;
-    font-family: Consolas, 'Courier New', monospace;
-    font-size: 0.9rem;
-    flex-grow: 1;
-    overflow-y: auto;
-    color: #b9bbbe; 
-  }
-  
-  .preview-box span {
-    transition: opacity 0.2s;
-    cursor: pointer;
-  }
-  .preview-box span:hover {
-    opacity: 0.6;
-  }
-
-  /* --- ANSI Color Mappings for HTML Preview --- */
-  .fg-30 { color: #4f545c; }
-  .fg-31 { color: #ed4245; }
-  .fg-32 { color: #57f287; }
-  .fg-33 { color: #fee75c; }
-  .fg-34 { color: #3498db; }
-  .fg-35 { color: #eb459e; }
-  .fg-36 { color: #1abc9c; }
-  .fg-37 { color: #ffffff; }
-
-  .bg-40 { background-color: #18191c; } 
-  .bg-41 { background-color: #ed4245; }
-  .bg-42 { background-color: #57f287; } 
-  .bg-43 { background-color: #fee75c; }
-  .bg-44 { background-color: #3498db; }
-  .bg-45 { background-color: #eb459e; }
-  .bg-46 { background-color: #1abc9c; }
-  .bg-47 { background-color: #ffffff; }
-
-  .bold { font-weight: bold; }
-  .underline { text-decoration: underline; }
+  .copy-btn:hover { background: var(--accent-hover); }
 </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- Left Panel: Formatting Controls -->
+  <!-- Left Panel: Live Editor -->
   <div class="panel">
-    <h2>1. Style Your Text</h2>
-    <p class="instruction">Enter text, pick colors, and add it to the build area.</p>
+    <h2>1. Edit & Format</h2>
+    <p class="instruction">Type your text, highlight a section, and select a color. Discord only supports the 8 specific colors shown below.</p>
     
-    <textarea id="text-input" placeholder="Enter text here..."></textarea>
-    
-    <div class="controls">
-      <div>
-        <label>Text Color</label>
-        <select id="fg-color">
-          <option value="">None (Default)</option>
-          <option value="30">Gray</option>
-          <option value="31">Red</option>
-          <option value="32">Green</option>
-          <option value="33">Yellow</option>
-          <option value="34">Blue</option>
-          <option value="35">Pink</option>
-          <option value="36">Cyan</option>
-          <option value="37">White</option>
-        </select>
+    <div class="toolbar">
+      <div class="tool-group">
+        <button class="format-btn" onclick="formatText('bold')" title="Bold">B</button>
+        <button class="format-btn" onclick="formatText('underline')" title="Underline" style="text-decoration: underline;">U</button>
       </div>
-      <div>
-        <label>Background Color</label>
-        <select id="bg-color">
-          <option value="">None (Default)</option>
-          <option value="40">Dark (Firefly)</option>
-          <option value="41">Red/Orange</option>
-          <option value="42">Marble Green</option>
-          <option value="43">Grayish Yellow</option>
-          <option value="44">Grayish Blue</option>
-          <option value="45">Purple/Pink</option>
-          <option value="46">Teal/Light Gray</option>
-          <option value="47">White</option>
-        </select>
+      <div class="tool-group" id="fg-tools">
+        <span class="tool-label">Text</span>
+        <!-- Populated by JS -->
+      </div>
+      <div class="tool-group" id="bg-tools">
+        <span class="tool-label">Back</span>
+        <!-- Populated by JS -->
+      </div>
+      <div class="tool-group">
+        <button class="format-btn" onclick="clearFormat()" title="Remove formatting from selection">✕ Clear</button>
       </div>
     </div>
     
-    <div class="checkbox-group">
-      <label><input type="checkbox" id="bold"> <strong>Bold</strong></label>
-      <label><input type="checkbox" id="underline"> <u>Underline</u></label>
-    </div>
-    
-    <button onclick="addFragment()">Add Text Piece ↓</button>
+    <div id="editor" class="editor-box" contenteditable="true" spellcheck="false">Type here and format...</div>
   </div>
   
-  <!-- Right Panel: Preview & Export -->
+  <!-- Right Panel: Live Output -->
   <div class="panel">
-    <h2>2. Preview & Copy</h2>
-    <p class="instruction">Click a text fragment in the preview to remove it.</p>
+    <h2>2. Live Output</h2>
+    <p class="instruction">Your formatted code block is generated here automatically.</p>
     
-    <div class="preview-box" id="preview" title="Click any word to delete it from the stack"></div>
-    
-    <div class="controls">
-      <button id="copy-btn" onclick="copyToClipboard()">Copy Codeblock</button>
-      <button class="btn-danger" onclick="clearAll()">Clear All</button>
+    <div class="preview-container">
+      <pre class="preview-code" id="output-code"><code></code></pre>
     </div>
+    
+    <button id="copy-btn" class="copy-btn" onclick="copyToClipboard()">Copy Codeblock</button>
   </div>
 </div>
 
 <script>
-  let fragments = [];
+  // Discord's strict ANSI color palette
+  const fgColors = [
+    { id: '30', hex: '#4f545c', name: 'Gray' },
+    { id: '31', hex: '#ed4245', name: 'Red' },
+    { id: '32', hex: '#57f287', name: 'Green' },
+    { id: '33', hex: '#fee75c', name: 'Yellow' },
+    { id: '34', hex: '#3498db', name: 'Blue' },
+    { id: '35', hex: '#eb459e', name: 'Pink' },
+    { id: '36', hex: '#1abc9c', name: 'Cyan' },
+    { id: '37', hex: '#ffffff', name: 'White' }
+  ];
 
-  function addFragment() {
-    const textInput = document.getElementById('text-input');
-    const text = textInput.value;
-    
-    if (!text) return; // Prevent empty blocks
+  const bgColors = [
+    { id: '40', hex: '#18191c', name: 'Dark' },
+    { id: '41', hex: '#e67e22', name: 'Orange' },
+    { id: '42', hex: '#2ecc71', name: 'Marble' },
+    { id: '43', hex: '#f1c40f', name: 'Gray-Yellow' },
+    { id: '44', hex: '#7289da', name: 'Gray-Blue' },
+    { id: '45', hex: '#9b59b6', name: 'Purple' },
+    { id: '46', hex: '#11806a', name: 'Teal' },
+    { id: '47', hex: '#ecf0f1', name: 'Light' }
+  ];
 
-    const fg = document.getElementById('fg-color').value;
-    const bg = document.getElementById('bg-color').value;
-    const isBold = document.getElementById('bold').checked;
-    const isUnderline = document.getElementById('underline').checked;
+  // Dynamic maps to accurately reverse browser RGB styles back to ANSI codes
+  const ansiFgMap = {};
+  const ansiBgMap = {};
 
-    fragments.push({ text, fg, bg, isBold, isUnderline });
-    renderPreview();
-    
-    // Clear input box so users can easily type the next segment
-    textInput.value = '';
-    textInput.focus();
-  }
+  window.onload = () => {
+    setupToolbar();
+    setupEditorListeners();
+    updateOutput();
+  };
 
-  function renderPreview() {
-    const previewDiv = document.getElementById('preview');
-    previewDiv.innerHTML = '';
-    
-    fragments.forEach((frag, index) => {
-      const span = document.createElement('span');
-      span.textContent = frag.text;
-      
-      // Apply CSS visual styles for the live preview
-      if (frag.fg) span.classList.add(`fg-${frag.fg}`);
-      if (frag.bg) span.classList.add(`bg-${frag.bg}`);
-      if (frag.isBold) span.classList.add('bold');
-      if (frag.isUnderline) span.classList.add('underline');
-      
-      // Allow users to delete a mistake by clicking it
-      span.onclick = () => {
-        fragments.splice(index, 1);
-        renderPreview();
-      };
-      
-      previewDiv.appendChild(span);
+  function setupToolbar() {
+    // We create a hidden element to let the browser convert hex to its own RGB format,
+    // ensuring our color matching is fully accurate across all browsers.
+    const tester = document.createElement('div');
+    tester.style.position = 'absolute';
+    tester.style.visibility = 'hidden';
+    document.body.appendChild(tester);
+
+    const fgContainer = document.getElementById('fg-tools');
+    fgColors.forEach(c => {
+      tester.style.color = c.hex;
+      const rgb = window.getComputedStyle(tester).color.replace(/\s/g, '');
+      ansiFgMap[rgb] = c.id;
+
+      const btn = document.createElement('button');
+      btn.className = 'color-btn';
+      btn.style.backgroundColor = c.hex;
+      btn.title = `Text: ${c.name}`;
+      btn.onclick = () => formatText('foreColor', c.hex);
+      fgContainer.appendChild(btn);
     });
+
+    const bgContainer = document.getElementById('bg-tools');
+    bgColors.forEach(c => {
+      tester.style.backgroundColor = c.hex;
+      const rgb = window.getComputedStyle(tester).backgroundColor.replace(/\s/g, '');
+      ansiBgMap[rgb] = c.id;
+
+      const btn = document.createElement('button');
+      btn.className = 'color-btn';
+      btn.style.backgroundColor = c.hex;
+      btn.title = `Background: ${c.name}`;
+      btn.onclick = () => formatBg(c.hex);
+      bgContainer.appendChild(btn);
+    });
+
+    document.body.removeChild(tester);
   }
 
-  function clearAll() {
-    fragments = [];
-    renderPreview();
+  function setupEditorListeners() {
+    const editor = document.getElementById('editor');
+    const events = ['input', 'keyup', 'mouseup', 'paste'];
+    events.forEach(evt => editor.addEventListener(evt, () => {
+      // Small timeout to allow native pasting/typing to resolve in DOM
+      setTimeout(updateOutput, 10);
+    }));
+  }
+
+  function formatText(command, value = null) {
+    document.execCommand(command, false, value);
+    document.getElementById('editor').focus();
+    updateOutput();
+  }
+
+  function formatBg(hex) {
+    // Handle cross-browser differences for background highlighting
+    if (!document.execCommand('hiliteColor', false, hex)) {
+      document.execCommand('backColor', false, hex);
+    }
+    document.getElementById('editor').focus();
+    updateOutput();
+  }
+
+  function clearFormat() {
+    document.execCommand('removeFormat');
+    // Forcefully remove background colors if they persist
+    document.execCommand('hiliteColor', false, 'transparent');
+    document.execCommand('backColor', false, 'transparent');
+    document.getElementById('editor').focus();
+    updateOutput();
+  }
+
+  // Parses the editor's live HTML DOM into strict Discord ANSI format
+  function walkDOM(node) {
+    let result = '';
+
+    node.childNodes.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        const text = child.textContent;
+        if (text === '') return;
+
+        const compStyle = window.getComputedStyle(child.parentElement);
+        let codes = [];
+
+        const fgRgb = compStyle.color.replace(/\s/g, '');
+        const bgRgb = compStyle.backgroundColor.replace(/\s/g, '');
+
+        if (ansiFgMap[fgRgb]) codes.push(ansiFgMap[fgRgb]);
+        if (ansiBgMap[bgRgb]) codes.push(ansiBgMap[bgRgb]);
+        
+        // Browsers return font weights numerically or as bold
+        if (compStyle.fontWeight === '700' || compStyle.fontWeight === 'bold' || parseInt(compStyle.fontWeight) >= 700) {
+            codes.push('1');
+        }
+        if (compStyle.textDecorationLine && compStyle.textDecorationLine.includes('underline')) {
+            codes.push('4');
+        }
+
+        if (codes.length > 0) {
+          result += `\x1B[${codes.join(';')}m${text}\x1B[0m`;
+        } else {
+          result += text;
+        }
+
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        if (child.tagName === 'BR') {
+          result += '\n';
+        } else if (child.tagName === 'DIV' || child.tagName === 'P') {
+          result += '\n';
+          // Prevent double newlines if the browser generates empty <div><br></div> elements
+          child.childNodes.forEach(c => {
+            if (c.tagName !== 'BR' || child.childNodes.length > 1) {
+              result += walkDOM(c);
+            }
+          });
+        } else {
+          result += walkDOM(child);
+        }
+      }
+    });
+
+    return result;
+  }
+
+  function updateOutput() {
+    const editor = document.getElementById('editor');
+    
+    // Trim leading newlines created by contenteditable div layouts
+    let rawAnsi = walkDOM(editor).replace(/^\n+/, '');
+
+    const outputCode = document.getElementById('output-code');
+    if (rawAnsi.trim() === '') {
+        outputCode.textContent = '';
+    } else {
+        outputCode.textContent = "```ansi\n" + rawAnsi + "\n```";
+    }
   }
 
   function copyToClipboard() {
-    if (fragments.length === 0) {
-        alert("Add some text first!");
-        return;
-    }
+    const outputText = document.getElementById('output-code').textContent;
+    if (!outputText) return;
 
-    // Start with the exact Discord ANSI language declaration
-    let result = "```ansi\n";
-    
-    fragments.forEach(frag => {
-      let codes = [];
-      
-      if (frag.isBold) codes.push('1');
-      if (frag.isUnderline) codes.push('4');
-      if (frag.fg) codes.push(frag.fg);
-      if (frag.bg) codes.push(frag.bg);
-      
-      if (codes.length > 0) {
-        // \x1B is the invisible ESC control character required for Discord to read the format
-        // \x1B[0m is the reset code so colors don't bleed into the next text block
-        result += `\x1B[${codes.join(';')}m${frag.text}\x1B[0m`;
-      } else {
-        result += frag.text;
-      }
-    });
-    
-    // Cap it off with the closing backticks
-    result += "\n```";
-    
-    // Write to clipboard and update button UI briefly
-    navigator.clipboard.writeText(result).then(() => {
+    navigator.clipboard.writeText(outputText).then(() => {
       const btn = document.getElementById('copy-btn');
       const originalText = btn.textContent;
       btn.textContent = "Copied to Clipboard!";
-      btn.style.background = "#3ba55c"; // Discord green color
+      btn.style.background = "#3ba55c"; // Discord green
       
       setTimeout(() => {
         btn.textContent = originalText;
         btn.style.background = "";
-      }, 2500);
+      }, 2000);
     }).catch(err => {
-      alert("Clipboard API failed. Please ensure you are running this on localhost or via HTTPS.");
+      alert("Clipboard API failed. Please ensure you are running this securely via HTTPS or localhost.");
     });
   }
 </script>
