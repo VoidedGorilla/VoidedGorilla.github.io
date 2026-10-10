@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord ANSI Text Generator</title>
+<style>
+  :root {
+    --bg-main: #36393f;
+    --bg-panel: #2f3136;
+    --bg-input: #40444b;
+    --border-color: #202225;
+    --text-main: #dcddde;
+    --text-muted: #8e9297;
+    --accent: #5865f2;
+    --accent-hover: #4752c4;
+    --danger: #ed4245;
+    --danger-hover: #c9383b;
+  }
+  
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'gg sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+  }
+  
+  .container {
+    background: var(--bg-panel);
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    max-width: 900px;
+    width: 100%;
+    display: flex;
+    gap: 2rem;
+  }
+  
+  @media (max-width: 768px) {
+    .container { flex-direction: column; }
+  }
+  
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+  
+  h2 {
+    margin: 0;
+    color: #ffffff;
+    font-size: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.5rem;
+  }
+  
+  .instruction {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: -0.75rem;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #b9bbbe;
+  }
+  
+  textarea {
+    width: 100%;
+    height: 100px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-main);
+    padding: 0.75rem;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  
+  textarea:focus, select:focus {
+    outline: none;
+    border-color: #7289da;
+  }
+  
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  
+  select {
+    width: 100%;
+    background: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  
+  .checkbox-group {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    background: var(--bg-input);
+    padding: 0.75rem;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+  }
+  
+  .checkbox-group label {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: normal;
+  }
+  
+  button {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background 0.2s;
+    font-size: 0.95rem;
+    width: 100%;
+  }
+  
+  button:hover { background: var(--accent-hover); }
+  .btn-danger { background: var(--danger); }
+  .btn-danger:hover { background: var(--danger-hover); }
+  
+  .preview-box {
+    background: #202225; /* Discord codeblock background */
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1rem;
+    min-height: 180px;
+    white-space: pre-wrap;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 0.9rem;
+    flex-grow: 1;
+    overflow-y: auto;
+    color: #b9bbbe; 
+  }
+  
+  .preview-box span {
+    transition: opacity 0.2s;
+    cursor: pointer;
+  }
+  .preview-box span:hover {
+    opacity: 0.6;
+  }
+
+  /* --- ANSI Color Mappings for HTML Preview --- */
+  .fg-30 { color: #4f545c; }
+  .fg-31 { color: #ed4245; }
+  .fg-32 { color: #57f287; }
+  .fg-33 { color: #fee75c; }
+  .fg-34 { color: #3498db; }
+  .fg-35 { color: #eb459e; }
+  .fg-36 { color: #1abc9c; }
+  .fg-37 { color: #ffffff; }
+
+  .bg-40 { background-color: #18191c; } 
+  .bg-41 { background-color: #ed4245; }
+  .bg-42 { background-color: #57f287; } 
+  .bg-43 { background-color: #fee75c; }
+  .bg-44 { background-color: #3498db; }
+  .bg-45 { background-color: #eb459e; }
+  .bg-46 { background-color: #1abc9c; }
+  .bg-47 { background-color: #ffffff; }
+
+  .bold { font-weight: bold; }
+  .underline { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Left Panel: Formatting Controls -->
+  <div class="panel">
+    <h2>1. Style Your Text</h2>
+    <p class="instruction">Enter text, pick colors, and add it to the build area.</p>
+    
+    <textarea id="text-input" placeholder="Enter text here..."></textarea>
+    
+    <div class="controls">
+      <div>
+        <label>Text Color</label>
+        <select id="fg-color">
+          <option value="">None (Default)</option>
+          <option value="30">Gray</option>
+          <option value="31">Red</option>
+          <option value="32">Green</option>
+          <option value="33">Yellow</option>
+          <option value="34">Blue</option>
+          <option value="35">Pink</option>
+          <option value="36">Cyan</option>
+          <option value="37">White</option>
+        </select>
+      </div>
+      <div>
+        <label>Background Color</label>
+        <select id="bg-color">
+          <option value="">None (Default)</option>
+          <option value="40">Dark (Firefly)</option>
+          <option value="41">Red/Orange</option>
+          <option value="42">Marble Green</option>
+          <option value="43">Grayish Yellow</option>
+          <option value="44">Grayish Blue</option>
+          <option value="45">Purple/Pink</option>
+          <option value="46">Teal/Light Gray</option>
+          <option value="47">White</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="checkbox-group">
+      <label><input type="checkbox" id="bold"> <strong>Bold</strong></label>
+      <label><input type="checkbox" id="underline"> <u>Underline</u></label>
+    </div>
+    
+    <button onclick="addFragment()">Add Text Piece ↓</button>
+  </div>
+  
+  <!-- Right Panel: Preview & Export -->
+  <div class="panel">
+    <h2>2. Preview & Copy</h2>
+    <p class="instruction">Click a text fragment in the preview to remove it.</p>
+    
+    <div class="preview-box" id="preview" title="Click any word to delete it from the stack"></div>
+    
+    <div class="controls">
+      <button id="copy-btn" onclick="copyToClipboard()">Copy Codeblock</button>
+      <button class="btn-danger" onclick="clearAll()">Clear All</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let fragments = [];
+
+  function addFragment() {
+    const textInput = document.getElementById('text-input');
+    const text = textInput.value;
+    
+    if (!text) return; // Prevent empty blocks
+
+    const fg = document.getElementById('fg-color').value;
+    const bg = document.getElementById('bg-color').value;
+    const isBold = document.getElementById('bold').checked;
+    const isUnderline = document.getElementById('underline').checked;
+
+    fragments.push({ text, fg, bg, isBold, isUnderline });
+    renderPreview();
+    
+    // Clear input box so users can easily type the next segment
+    textInput.value = '';
+    textInput.focus();
+  }
+
+  function renderPreview() {
+    const previewDiv = document.getElementById('preview');
+    previewDiv.innerHTML = '';
+    
+    fragments.forEach((frag, index) => {
+      const span = document.createElement('span');
+      span.textContent = frag.text;
+      
+      // Apply CSS visual styles for the live preview
+      if (frag.fg) span.classList.add(`fg-${frag.fg}`);
+      if (frag.bg) span.classList.add(`bg-${frag.bg}`);
+      if (frag.isBold) span.classList.add('bold');
+      if (frag.isUnderline) span.classList.add('underline');
+      
+      // Allow users to delete a mistake by clicking it
+      span.onclick = () => {
+        fragments.splice(index, 1);
+        renderPreview();
+      };
+      
+      previewDiv.appendChild(span);
+    });
+  }
+
+  function clearAll() {
+    fragments = [];
+    renderPreview();
+  }
+
+  function copyToClipboard() {
+    if (fragments.length === 0) {
+        alert("Add some text first!");
+        return;
+    }
+
+    // Start with the exact Discord ANSI language declaration
+    let result = "```ansi\n";
+    
+    fragments.forEach(frag => {
+      let codes = [];
+      
+      if (frag.isBold) codes.push('1');
+      if (frag.isUnderline) codes.push('4');
+      if (frag.fg) codes.push(frag.fg);
+      if (frag.bg) codes.push(frag.bg);
+      
+      if (codes.length > 0) {
+        // \x1B is the invisible ESC control character required for Discord to read the format
+        // \x1B[0m is the reset code so colors don't bleed into the next text block
+        result += `\x1B[${codes.join(';')}m${frag.text}\x1B[0m`;
+      } else {
+        result += frag.text;
+      }
+    });
+    
+    // Cap it off with the closing backticks
+    result += "\n```";
+    
+    // Write to clipboard and update button UI briefly
+    navigator.clipboard.writeText(result).then(() => {
+      const btn = document.getElementById('copy-btn');
+      const originalText = btn.textContent;
+      btn.textContent = "Copied to Clipboard!";
+      btn.style.background = "#3ba55c"; // Discord green color
+      
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = "";
+      }, 2500);
+    }).catch(err => {
+      alert("Clipboard API failed. Please ensure you are running this on localhost or via HTTPS.");
+    });
+  }
+</script>
+
+</body>
+</html>
